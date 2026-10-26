@@ -1,0 +1,2294 @@
+<!DOCTYPE html>
+<html lang="ja"><head>
+<script src="coi-serviceworker.js"></script><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>万兵(試作 r19)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#E9E4D8;--sheet:#F5F1E8;--ink:#231E17;--sub:#6A604F;--rule:#CBBFA8;--blue:#2F5FB3;--red:#B23A2E;--acc:#7A5A1E;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15130F;--sheet:#1F1C16;--ink:#ECE5D6;--sub:#A99D86;--rule:#3A342A;--blue:#6E9BEA;--red:#E2685A;--acc:#D9B26A;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#15130F;--sheet:#1F1C16;--ink:#ECE5D6;--sub:#A99D86;--rule:#3A342A;--blue:#6E9BEA;--red:#E2685A;--acc:#D9B26A;color-scheme:dark}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*::before,*::after{box-sizing:inherit}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:"Hiragino Sans","Noto Sans JP",sans-serif;font-size:15px;display:flex;flex-direction:column;overflow:hidden}
+header{flex:none;display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--rule)}
+h1{font-family:"Shippori Mincho B1","Hiragino Mincho ProN",serif;font-size:20px;margin:0;letter-spacing:.1em}
+.score{flex:1;min-width:0;display:flex;align-items:center;gap:8px;font-variant-numeric:tabular-nums;font-size:13px;line-height:1.2}
+.score .s{min-width:4.6em}.score .s.r{text-align:right}
+.score small{display:block;color:var(--sub);font-size:11px}
+.bar{flex:1;height:8px;border-radius:4px;background:var(--red);overflow:hidden;min-width:40px}
+.bar i{display:block;height:100%;width:50%;background:var(--blue);transition:width .3s}
+button,select{font:inherit;color:var(--ink);background:var(--sheet);border:1px solid var(--rule);border-radius:8px;padding:6px 12px;min-height:40px;cursor:pointer}
+button:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+button.on{background:var(--acc);color:var(--sheet);border-color:var(--acc)}
+#stage{flex:1;min-height:0;position:relative;background:#1A1812;touch-action:none;overflow:hidden}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.tag{position:absolute;color:#E8DFC9;background:rgba(20,18,13,.72);padding:4px 10px;border-radius:4px;font-size:13px;pointer-events:none}
+#hint{left:10px;top:56px}
+#clock{right:10px;top:10px;font-variant-numeric:tabular-nums}
+#orders{position:absolute;left:0;right:0;bottom:0;display:flex;gap:6px;align-items:center;padding:6px 8px;background:rgba(20,18,13,.82);color:#EDE4CF;overflow-x:auto;white-space:nowrap}
+#orders[hidden]{display:none}
+#orders button{background:#2B271F;color:#EDE4CF;border-color:#4A4335;min-height:38px;padding:4px 10px;flex:none}
+#orders button.on{background:#C9A55A;color:#1A1812;border-color:#C9A55A}
+#orders button:disabled{opacity:.4}
+#orders .who{font-weight:700;min-width:5.5em;max-width:15em;white-space:normal;line-height:1.3;font-size:13px;flex:none}
+#orders .mor{display:inline-block;width:46px;height:6px;background:#4A4335;border-radius:3px;vertical-align:middle;margin-left:4px;overflow:hidden}
+#orders .mor i{display:block;height:100%;background:#D9B26A}
+#orders .sep{width:1px;align-self:stretch;background:#4A4335;flex:none}
+#plan{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(15,13,10,.6);padding:12px}
+#plan[hidden]{display:none}
+.card{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:16px 18px;max-width:480px;width:100%;max-height:100%;overflow:auto}
+.card h2{font-family:"Shippori Mincho B1","Hiragino Mincho ProN",serif;margin:0 0 6px;font-size:20px;letter-spacing:.08em}
+.card p{margin:0 0 10px;color:var(--sub);font-size:14px;line-height:1.7}
+.row{display:flex;align-items:center;gap:10px;margin:0 0 10px;flex-wrap:wrap}
+.row label{min-width:4.5em;font-weight:700}
+#go{width:100%;margin-top:6px;background:var(--acc);color:var(--sheet);border-color:var(--acc);font-weight:700;letter-spacing:.1em}
+#result{position:absolute;left:50%;top:16%;transform:translateX(-50%);text-align:center;font-family:"Shippori Mincho B1","Hiragino Mincho ProN",serif;font-size:30px;color:#F3E8CF;text-shadow:0 2px 12px #000;letter-spacing:.15em;pointer-events:none}
+#result small{display:block;font-size:14px;letter-spacing:.05em;margin-top:6px;font-family:"Hiragino Sans","Noto Sans JP",sans-serif}
+#camctl{position:absolute;right:10px;top:46px;display:flex;flex-direction:column;gap:6px}
+#camctl button{background:rgba(20,18,13,.75);color:#EDE4CF;border-color:#4A4335;min-height:36px;min-width:44px;padding:2px 8px;font-size:14px}
+.note{color:var(--sub);font-size:13px;flex:1}
+.se-row{display:flex;align-items:center;gap:10px;margin:0 0 10px;flex-wrap:wrap}
+.se-row>span{min-width:4.5em;font-weight:700}
+.se-vol{display:flex;align-items:center;gap:6px;flex:1;color:var(--sub);font-size:13px}.se-vol input{flex:1;accent-color:var(--acc)}
+#smoke{position:absolute;left:10px;top:10px;display:flex;align-items:center;gap:6px;background:rgba(20,18,13,.75);color:#EDE4CF;padding:5px 8px;border-radius:6px;font-size:13px}
+#smoke[hidden]{display:none}
+#smoke .lbl{font-weight:700;margin-right:2px}
+#smoke button{background:#2B271F;color:#EDE4CF;border-color:#4A4335;min-height:34px;padding:2px 9px}
+#smoke button:disabled{opacity:.4}
+#toast{position:absolute;left:50%;top:56px;transform:translateX(-50%);background:rgba(20,18,13,.85);color:#F3E2C2;border-left:3px solid #D9B26A;padding:6px 12px;border-radius:4px;font-size:14px;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+#toast.show{opacity:1}
+#editor{position:absolute;inset:0;pointer-events:none}
+#editor[hidden]{display:none}
+#editor .ed-top,#editor .ed-bot{position:absolute;left:0;right:0;display:flex;gap:6px;align-items:center;padding:6px 8px;background:rgba(20,18,13,.85);color:#EDE4CF;overflow-x:auto;white-space:nowrap;pointer-events:auto}
+#editor .ed-top{top:0}#editor .ed-bot{bottom:0}
+#editor button,#editor select{background:#2B271F;color:#EDE4CF;border-color:#4A4335;min-height:36px;padding:2px 10px;flex:none}
+#editor button.on{background:#C9A55A;color:#1A1812;border-color:#C9A55A}
+#editor button.done{background:#7A5A1E;border-color:#C9A55A;font-weight:700}
+#editor .lbl{font-weight:700;font-size:13px}#editor .sep{width:1px;align-self:stretch;background:#4A4335;flex:none}
+#editor .hint2{font-size:12px;color:#BDAE8E;margin-left:6px}
+@media (max-width:560px){h1{font-size:16px}.score{font-size:11px}header button{padding:6px 8px}}
+#result .again{display:flex;gap:8px;justify-content:center;margin-top:10px;pointer-events:auto}
+#result .again button{font-size:14px;padding:6px 12px}
+</style></head>
+<body>
+<header>
+  <h1>万兵</h1>
+  <div class="score"><div class="s" style="color:var(--blue)"><b id="nb">10000</b><small id="nb2">逃 0・討 0</small></div><div class="bar"><i id="bar"></i></div><div class="s r" style="color:var(--red)"><b id="nr">10000</b><small id="nr2">逃 0・討 0</small></div></div>
+  <button type="button" id="snd" aria-label="効果音">音 入</button>
+  <button type="button" id="play">止める</button>
+  <button type="button" id="speed">×2</button>
+  <button type="button" id="again">布陣</button>
+</header>
+<div id="stage">
+  <canvas id="cv" aria-label="戦場。旗を押すと部隊を選べます。2本の指で拡大、指で移動"></canvas>
+  <div id="smoke" hidden><span class="lbl">狼煙</span><button type="button" data-k="attack">総攻め</button><button type="button" data-k="hold">止まれ</button><button type="button" data-k="back">退け</button><span id="smoke-st"></span></div>
+  <div id="toast" role="status"></div>
+  <div class="tag" id="hint">旗を押すと部隊を選べます</div>
+  <div class="tag" id="clock">0:00</div>
+  <div id="result" hidden></div>
+  <div id="camctl" aria-label="見る角度">
+    <button type="button" data-c="l" aria-label="左に回す">↺</button><button type="button" data-c="r" aria-label="右に回す">↻</button>
+    <button type="button" data-c="up" aria-label="傾ける">傾ける</button><button type="button" data-c="dn" aria-label="起こす">起こす</button>
+    <button type="button" data-c="0" aria-label="真上から見る">真上</button>
+  </div>
+  <div id="orders" hidden></div>
+  <div id="editor" hidden>
+    <div class="ed-top" role="toolbar" aria-label="塗るもの">
+      <button type="button" data-t="0">平地</button><button type="button" data-t="1">森</button><button type="button" data-t="2">沼</button><button type="button" data-t="3">川</button><button type="button" data-t="4">浅瀬</button><button type="button" data-t="6">橋</button><button type="button" data-t="5">道</button><button type="button" data-t="up">丘を盛る</button><button type="button" data-t="down">丘を削る</button>
+    </div>
+    <div class="ed-bot">
+      <span class="lbl">筆</span><button type="button" data-b="10">細</button><button type="button" data-b="25">中</button><button type="button" data-b="60">太</button>
+      <span class="sep"></span><span class="lbl">見本</span><select id="preset" aria-label="見本の戦場"><option value="">選ぶ…</option></select>
+      <button type="button" id="ed-clear">全部消す</button><span class="sep"></span><button type="button" id="ed-done" class="done">できた</button>
+      <span class="hint2">1本の指で塗る・2本の指で動かす</span>
+    </div>
+  </div>
+  <div id="plan"><div class="card">
+    <h2>布陣</h2>
+    <p>青と赤、1万人ずつ。歩兵の大隊7(前線6・予備1)、弓隊2、騎兵2、それに総大将を守る近衛と馬廻(うままわり)。各中隊には旗持ちがいて、旗のもとに兵が集まります。戦は全滅ではなく、士気が尽きて崩れた側の負けです。</p>
+    <p>あなたは青の総大将(金の馬印)です。命令は伝令の騎馬が走って届けるので、本陣から遠い部隊ほど遅れ、敵のそばを通る伝令は討たれることもあります。全軍への簡単な合図は狼煙で出せます。本陣(近衛)も動かせます。</p>
+    <div class="row"><label>戦場</label><b id="map-name">平原</b><button type="button" id="edit">戦場をつくる</button></div>
+    <div class="row"><label>見方</label><button type="button" id="m-cmd" class="on">自分で指揮</button><button type="button" id="m-watch">見守る(青もおまかせ)</button></div>
+    <div class="row" id="se-anchor"><label>音</label><span class="note">2本の指をひねると回り、2本の指を上下に動かすと傾きます。</span></div>
+    <button type="button" id="go">開戦</button>
+  </div></div>
+</div>
+<script>
+window.__MP_SHARED_ON = !!(window.crossOriginIsolated && typeof SharedArrayBuffer !== "undefined");
+</script>
+<script id="mp-engine">
+// ==== 万兵エンジン r19 ここから(この間は丸ごと入れ替えて使う。中は書き換えない) ====
+// ───── 万兵エンジン ─────
+// 戦いの決まり・地形・頭脳ユニット。画面や遊びの仕組みは、この外に置く
+// ほかのゲームから使うときは、下の MANPEI(入口と出口)だけを使い、中は書き換えない
+// ───── 入れ物の作り方 ─────
+// 計算を別の流れ(Worker)で動かすときは、兵の入れ物を画面と分け合う(SharedArrayBuffer)。作る順番は画面と別の流れで同じなので、順番で対応させる
+const SHARED = { on: !!globalThis.__MP_SHARED_ON, take: globalThis.__MP_SHARED_TAKE || null, list: [] };
+function TA(T, n){
+  const len = Array.isArray(n) ? n.length : n;
+  let a;
+  if (SHARED.take){ a = new T(SHARED.take[SHARED.list.length]); SHARED.list.push(a.buffer); }
+  else if (SHARED.on){ const b = new SharedArrayBuffer(len * T.BYTES_PER_ELEMENT); SHARED.list.push(b); a = new T(b); }
+  else a = new T(len);
+  if (Array.isArray(n) && !SHARED.take) a.set(n);
+  return a;
+}
+const ENGINE_VERSION = "r19";
+// 変わったこと(新しい順)
+//  r19:計算を別の流れ(Worker)で動かせるように(画面と入れ物を分け合う)。分け合えない所では、これまでどおり画面と同じ流れで動く
+//  r18:大きな計算を役目ごとに分けた(兵ひとりの計算・見回り・逃げる兵・並ぶ兵)。中身は同じで、同じ種なら様子の数もぴったり同じ
+//  r17:斬り合っている兵も2刻みに1回考える。考えない刻みの分も、判断・打ち込み・矢の間合いと疲れをまとめて進める(r16では間合いが遅れていた)
+//  r16:考えると歩くを分けた(敵が目の前にいない兵は、4刻みに1回だけ考え、間の刻みは決めた場所へ歩くだけ)
+//  r15:遠くの部隊は軽い計算(敵から120m以上離れた中隊の兵は、見回り・判断をせず隊形について歩くだけ。見え方は同じ)
+//  r14:同じ種なら同じ合戦(setup の2つ目に種)。プレイヤーの命令は cmdOrder/cmdSmoke を通し、記録(orderLog)して再生できる(setup の3つ目)
+//  r13:隊と隊のぶつかり(味方の部隊をよける道探し、交差の押し合いと乱れ、逃げる兵の恐怖のうつり)
+//  r12:形勢判断と軍全体の士気、総崩れで決着、追撃
+//  r11:騎兵の速さ・加速・曲がり方・突撃と槍ぶすま・馬の疲れ
+"use strict";
+// ───── 戦場の決まり(1 = 1m、1刻み = 0.1秒) ─────
+const W = 1500, H = 1000, CS = 2, HW = W / CS, HH = H / CS;
+const M = 20000, C = 200, SPC = 100;
+const INF = 0, ARCH = 1, CAV = 2;
+const SP = [{ name: "密集", sx: 1.0, sy: 1.3 }, { name: "ふつう", sx: 1.8, sy: 2.0 }, { name: "散開", sx: 4.0, sy: 4.0 }];
+const COLS = [10, 20, 25], HP0 = [10, 8, 15];
+// 武器の届く距離 [歩兵, 弓, 騎兵]:短い武器(刀・剣・斧)と長い武器(槍・長柄)
+const REACH_SHORT = [1.6, 1.4, 2.0], REACH_LONG = [2.9, 2.5, 2.6];
+// 防具:[軽い, ふつう, 重い] 傷の深さの倍率と、疲れやすさの倍率
+const ARMF = [1, 0.75, 0.5], ARMT = [0.85, 1, 1.35];
+const GUARD = 0, ATTACK = 1, REST = 2, ASSIST = 3;
+const FORM = 0, ROUT = 1, DEAD = 2, FLED = 3, WOUND = 4, CARED = 5;   // 負傷して後ろへ下がる → 後ろで手当てを受ける
+const HIST = 40;
+const SECT = 10, AM = TA(Float32Array, [0.9, 0.9]);   // AM:両軍の軍全体の士気(兵の計算から素早く読む)     // 形勢を読む区画の数(戦場を横に10に分ける)
+function spacing(type, sp){ const P = SP[sp]; if (type === CAV) return [[1.2, 1.6, 3.5][sp], [3.2, 3.6, 5][sp]]; if (type === ARCH) return [P.sx * 1.3, P.sy * 1.2]; return [P.sx, P.sy]; }
+let seed = 1;
+const hyp = (a, b) => Math.sqrt(a * a + b * b);
+const rnd = () => { seed = (Math.imul(seed, 1103515245) + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+// 兵
+const sx = TA(Float32Array, M), sy = TA(Float32Array, M), hp = TA(Float32Array, M), mor = TA(Float32Array, M), mv = TA(Float32Array, M);
+const st = TA(Uint8Array, M), sside = TA(Uint8Array, M), scomp = TA(Int16Array, M), sslot = TA(Int16Array, M), imp = TA(Uint8Array, M);
+const tgtE = TA(Int32Array, M), cdA = TA(Int16Array, M), hitT = TA(Int32Array, M), nearF = TA(Uint8Array, M), fighting = TA(Uint8Array, M), role = TA(Uint8Array, M), quiver = TA(Int16Array, M);
+// 中隊
+const cbat = TA(Int16Array, C), ctype = TA(Uint8Array, C), crow = TA(Uint8Array, C), ccol = TA(Uint8Array, C), cpx = TA(Float32Array, C), cpy = TA(Float32Array, C);
+const cleader = TA(Int32Array, C), cleaderless = TA(Int16Array, C), cflag = TA(Int32Array, C), cflagDown = TA(Int16Array, C);
+const calive = TA(Int16Array, C), crout = TA(Int16Array, C), cfight = TA(Int16Array, C), cdelay = TA(Int16Array, C);
+const ccos = TA(Float32Array, C), csin = TA(Float32Array, C), csx = TA(Float32Array, C), csy = TA(Float32Array, C), cdx = TA(Float32Array, C), cdy = TA(Float32Array, C);
+const cord = new Array(C).fill(null), cang = TA(Float32Array, C), crun = TA(Uint8Array, C), cchg = TA(Int16Array, C), rallyC = TA(Int16Array, M), thr = TA(Uint8Array, M);
+const cengaged = TA(Uint8Array, C), ctarget = TA(Int16Array, C), members = TA(Int32Array, C * SPC), mcount = TA(Int16Array, C);
+const head = TA(Int32Array, HW * HH).fill(-1), nxt = TA(Int32Array, M), used = TA(Int32Array, M); let nUsed = 0;
+// 粗い区画(10m):陣営ごとの兵の数。「近くに敵がいるか」を素早く調べる
+const CG = 10, GW2 = W / CG, GH2 = H / CG, coarse = [TA(Uint16Array, GW2 * GH2), TA(Uint16Array, GW2 * GH2)];
+// 兵ごとの控え(見回りを間引いた刻みに使う)
+const ccols = TA(Uint8Array, C).fill(10), cBroken = TA(Uint8Array, C), cBack = TA(Uint8Array, C), cRunF = TA(Uint8Array, C), cChg = TA(Uint8Array, C), cImpReset = TA(Uint8Array, C), cLOK = TA(Uint8Array, C), cFOK = TA(Uint8Array, C), cArch = TA(Uint8Array, C);
+const ofw = TA(Float32Array, M), olt = TA(Float32Array, M), ovm = TA(Float32Array, M), oOK = TA(Uint8Array, M);   // 最後に考えた立つ場所(中隊から見た前後・左右)と速さ
+const cFar = TA(Uint8Array, C), bCross = TA(Uint8Array, 64), coarseR = TA(Uint16Array, (W / 10) * (H / 10));   // bCross:別の部隊と重なっている大隊/coarseR:逃げる兵のいる粗い区画   // 敵から遠い中隊(軽い計算でよい)
+const xbB = TA(Uint8Array, M), rhB = TA(Uint8Array, M), cXb = TA(Int16Array, C), cRh = TA(Int16Array, C);   // 別の部隊とのぶつかり
+const cstill = TA(Uint8Array, C), brave = TA(Float32Array, M), broke = TA(Uint8Array, M), morP = TA(Float32Array, M), scav = TA(Uint8Array, M), tgtB = TA(Int32Array, M), nrB = TA(Uint8Array, M), erB = TA(Uint8Array, M);
+let events = [], bats = [], gens = [], msgs = [], runners = [], cq = [], smokes = [], smokeQ = [], arrows = [], deaths = [], tick = 0, over = null, watch = false;
+// 兵ひとりひとりの戦いの状態
+const fat = TA(Float32Array, M), lock = TA(Int32Array, M), atkOn = TA(Uint8Array, M), stance = TA(Uint8Array, M), dec = TA(Int16Array, M), wT = TA(Int16Array, M);
+const safeF = TA(Uint8Array, M), dropped = TA(Uint8Array, M), bhd = TA(Uint8Array, M), slotOwn = TA(Int32Array, C * SPC).fill(-1); let swaps = 0;
+const rspd = TA(Float32Array, M), cGait = TA(Float32Array, C), cWall = TA(Int16Array, C).fill(-1);
+const pfx = TA(Float32Array, M), pfy = TA(Float32Array, M), jx = TA(Float32Array, M), jy = TA(Float32Array, M), blk = TA(Uint8Array, M), eNear = TA(Uint8Array, M);
+const lastU = TA(Int32Array, M), tgtF = TA(Int32Array, M), cov = TA(Uint8Array, M), assistB = TA(Int32Array, M);
+// 中隊の性質と様子
+const cwep = TA(Uint8Array, C), carm = TA(Uint8Array, C), cshd = TA(Uint8Array, C), cOrd = TA(Float32Array, C), cfatA = TA(Float32Array, C), cfatF = TA(Float32Array, C), cnF = TA(Int16Array, C), cmorA = TA(Float32Array, C), cOpp = TA(Int16Array, C), cEbb = TA(Uint8Array, C), csup = TA(Uint8Array, C);
+let lost = [[0, 0, 0], [0, 0, 0]], arrowKills = [0, 0], rallyList = [[], []], rallied = [0, 0];
+
+const UNITS = [
+  // 武器 wep:0=短い(刀・剣・斧) 1=長い(槍・長柄)、防具 arm:0軽 1ふつう 2重、盾 shd
+  ...[0, 1, 2, 3, 4, 5].map(k => ({ name: "一二三四五六"[k], type: INF, n: 10, role: "front", k, wep: k % 2 ? 0 : 1, arm: 1, shd: k % 2 ? 1 : 0 })),
+  { name: "七", type: INF, n: 10, role: "res", wep: 0, arm: 1, shd: 1 },
+  { name: "弓一", type: ARCH, n: 6, role: "arch", k: 0, wep: 0, arm: 0, shd: 0 }, { name: "弓二", type: ARCH, n: 6, role: "arch", k: 1, wep: 0, arm: 0, shd: 0 },
+  { name: "騎一", type: CAV, n: 5, role: "wing", k: 0, wep: 1, arm: 1, shd: 0 }, { name: "騎二", type: CAV, n: 5, role: "wing", k: 1, wep: 1, arm: 1, shd: 0 },
+  { name: "近衛", type: INF, n: 3, role: "guard", wep: 0, arm: 2, shd: 1 }, { name: "馬廻", type: CAV, n: 5, role: "horse", wep: 1, arm: 2, shd: 0 },
+];
+// ───── 同じ始まりなら同じ合戦 ─────
+// 合戦の中の乱数は、すべて種(seed)から作る。プレイヤーの命令は「何刻み目に何を出したか」を記録し、記録どおりに出せば同じ合戦になる
+let battleSeed = 0, orderLog = [], replayLog = null, replayAt = 0;
+function setup(watchMode, seedIn, replay){
+  battleSeed = seedIn != null ? seedIn | 0 : (Math.random() * 1e9) | 0;
+  seed = battleSeed; watch = !!watchMode; tick = 0; over = null; orderLog = []; replayLog = replay || null; replayAt = 0;
+  // 前の合戦の名残を消す(同じ種なら同じ合戦にするため、入れ物を全部まっさらに)
+  sx.fill(0); sy.fill(0); hp.fill(0); mor.fill(0); mv.fill(0); st.fill(0); sside.fill(0); scomp.fill(0); sslot.fill(0); imp.fill(0); tgtE.fill(0); cdA.fill(0); hitT.fill(0); nearF.fill(0); fighting.fill(0); role.fill(0); quiver.fill(0); cbat.fill(0); ctype.fill(0); crow.fill(0); ccol.fill(0); cpx.fill(0); cpy.fill(0); cleader.fill(0); cleaderless.fill(0); cflag.fill(0); cflagDown.fill(0); calive.fill(0); crout.fill(0); cfight.fill(0); cdelay.fill(0); ccos.fill(0); csin.fill(0); csx.fill(0); csy.fill(0); cdx.fill(0); cdy.fill(0); cord.fill(null); cang.fill(0); crun.fill(0); cchg.fill(0); rallyC.fill(0); thr.fill(0); cengaged.fill(0); ctarget.fill(0); mcount.fill(0); nxt.fill(0); used.fill(0); ccols.fill(10); cBroken.fill(0); cBack.fill(0); cRunF.fill(0); cChg.fill(0); cImpReset.fill(0); cLOK.fill(0); cFOK.fill(0); cArch.fill(0); xbB.fill(0); rhB.fill(0); cXb.fill(0); cRh.fill(0); cstill.fill(0); brave.fill(0); broke.fill(0); morP.fill(0); scav.fill(0); tgtB.fill(0); nrB.fill(0); erB.fill(0); fat.fill(0); lock.fill(0); atkOn.fill(0); stance.fill(0); dec.fill(0); wT.fill(0); safeF.fill(0); dropped.fill(0); bhd.fill(0); slotOwn.fill(-1); rspd.fill(0); cGait.fill(0); cWall.fill(-1); pfx.fill(0); pfy.fill(0); jx.fill(0); jy.fill(0); blk.fill(0); eNear.fill(0); lastU.fill(0); tgtF.fill(0); cov.fill(0); assistB.fill(0); cwep.fill(0); carm.fill(0); cshd.fill(0); cOrd.fill(0); cfatA.fill(0); cfatF.fill(0); cnF.fill(0); cmorA.fill(0); cOpp.fill(0); cEbb.fill(0); csup.fill(0);
+  navOcc.fill(0); AM[0] = AM[1] = 0.9; events.length = 0; head.fill(-1); nUsed = 0; coarse[0].fill(0); coarse[1].fill(0); rallyList = [[], []]; rallied = [0, 0]; pathBudget = 3; bCross.fill(0); coarseR.fill(0); cFar.fill(0); oOK.fill(0); ofw.fill(0); olt.fill(0); ovm.fill(0);
+  msgs = []; runners = []; cq = []; smokes = []; smokeQ = []; arrows = []; deaths = []; events = []; swaps = 0; lost = [[0, 0, 0], [0, 0, 0]]; lock.fill(-1); atkOn.fill(0); fat.fill(0); stance.fill(0); wT.fill(0); tgtF.fill(-1); assistB.fill(-1); cEbb.fill(0); csup.fill(0); arrowKills = [0, 0]; rallied = [0, 0]; rallyList = [[], []]; cord.fill(null); crun.fill(0); cchg.fill(0); rallyC.fill(-1);
+  bats = []; let si = 0, ci = 0;
+  for (const sd of [0, 1]){
+    const dir = sd === 0 ? 1 : -1, x0 = sd === 0 ? 560 : 940, a = sd === 0 ? 0 : Math.PI;
+    const plan0 = ["push", "envelop", "center", "wait"][rnd() * 4 | 0];
+    const g = { side: sd, plan: plan0, plan0, issued: {}, t0: 0, dead: false, gi: -1, guard: -1, horse: -1, x: 0, y: 0, smokeCD: 0,
+      armyMor: 0.9, broken: false, bal: new Float32Array(SECT), hist: [], trend: 0, global: 0, reserve: 0, retreatT: -1 };
+    gens[sd] = g; AM[sd] = 0.9;
+    for (const u of UNITS){
+      let x = x0, y = 500;
+      if (u.role === "front") y = 500 + (u.k - 2.5) * 130 * dir;
+      if (u.role === "res"){ x = x0 - 170 * dir; }
+      if (u.role === "arch"){ x = x0 - 90 * dir; y = 500 + (u.k ? 195 : -195) * dir; }
+      if (u.role === "wing"){ x = x0 - 70 * dir; y = 500 + (u.k ? 420 : -420) * dir; }   // 騎兵は横長の列なので、少し後ろ・内側に置く
+      if (u.role === "guard"){ x = x0 - 270 * dir; }
+      if (u.role === "horse"){ x = x0 - 270 * dir; y = 500 + 90 * dir; }
+      const bt = { id: bats.length, side: sd, name: u.name, type: u.type, role: u.role, x, y, a, sp: 1, v: 0, run: false,
+        order: { type: "hold" }, broken: false, comps: [], rows: [], alive: 0, rout: 0, contact: false, auto: -1, cohesion: 0,
+        leader: -1, flagComp: -1, hist: new Float32Array(HIST * 4), cav: { st: "idle", t: 0, gx: 0, gy: 0, halt: 0 },
+        trail: new Float32Array(800), tn: 0, th: 0, path: null, pi: 0, pgx: 0, pgy: 0, pt: -999, column: false, colT: -999, terNote: -1,
+        pace: 1, vc: 0, support: false, bold: 0.2 + rnd() * 0.7, obey: 0.2 + rnd() * 0.8, self: null, selfDone: false, withdrawing: false, mor: 0.8, rallyPt: null, hes: 0, refuse: false, initT: -1, sent: {}, plan: {} };
+      bats.push(bt);
+      if (u.role === "guard") g.guard = bt.id; if (u.role === "horse") g.horse = bt.id;
+      const twoRows = u.n >= 5, nF = twoRows ? Math.ceil(u.n / 2) : u.n;
+      bt.rows = twoRows ? [nF, u.n - nF] : [u.n];
+      for (let c = 0; c < u.n; c++){
+        bt.comps.push(ci); cbat[ci] = bt.id; ctype[ci] = u.type; cang[ci] = a; cwep[ci] = u.wep; carm[ci] = u.arm; cshd[ci] = u.shd; cOrd[ci] = 1; ccols[ci] = COLS[u.type];
+        crow[ci] = c < nF ? 0 : 1; ccol[ci] = c < nF ? c : c - nF; cleaderless[ci] = 0; cflagDown[ci] = 0; mcount[ci] = 0;
+        ci++;
+      }
+      for (let h = 0; h < HIST; h++){ bt.hist[h * 4] = x; bt.hist[h * 4 + 1] = y; bt.hist[h * 4 + 2] = a; bt.hist[h * 4 + 3] = 1; }
+      for (const c of bt.comps){
+        companyCache(c, bt); const s0 = compSlot(bt, c, bt.x, bt.y, bt.a, bt.sp); cpx[c] = s0[0]; cpy[c] = s0[1]; companyCache(c, bt);
+        for (let k2 = 0; k2 < SPC; k2++){
+          const i = si++; sside[i] = sd; scomp[i] = c; st[i] = FORM; scav[i] = u.type === CAV ? 1 : 0; tgtB[i] = -1; hp[i] = HP0[u.type]; cdA[i] = rnd() * 15 | 0; hitT[i] = -99; fighting[i] = 0; dec[i] = rnd() * 10 | 0; lastU[i] = 0; rspd[i] = 0; safeF[i] = 0; dropped[i] = 0; bhd[i] = 0; pfx[i] = Math.cos(a); pfy[i] = Math.sin(a); jx[i] = rnd() * 2 - 1; jy[i] = rnd() * 2 - 1; tgtE[i] = -1; mv[i] = 0; imp[i] = 0;
+          quiver[i] = u.type === ARCH ? 30 : 0;
+          const base = { guard: 0.78, horse: 0.75, front: 0.5, res: 0.55, arch: 0.4, wing: 0.6 }[u.role];
+          brave[i] = Math.max(0.05, Math.min(1, base + (rnd() + rnd() - 1) * 0.3)); broke[i] = 0;
+          if (k2 === SPC - 1){ role[i] = 1; cleader[c] = i; mor[i] = 0.95; }
+          else if (k2 === SPC - 2){ role[i] = 3; cflag[c] = i; mor[i] = 0.92; }
+          else { role[i] = 0; sslot[i] = k2; members[c * SPC + mcount[c]++] = i; mor[i] = 0.72 + rnd() * 0.22; }
+          const p2 = soldierSlot(i); sx[i] = p2[0] + (rnd() - 0.5) * 0.3; sy[i] = p2[1] + (rnd() - 0.5) * 0.3;
+        }
+      }
+      // 大隊長は、後ろの真ん中の中隊長が兼ねる(近衛は総大将)
+      const lc = bt.comps[bt.rows.length > 1 ? bt.rows[0] + (bt.rows[1] >> 1) : (bt.rows[0] >> 1)];
+      for (const c of bt.comps){ brave[cleader[c]] = Math.min(1, brave[cleader[c]] + 0.2); brave[cflag[c]] = Math.min(1, brave[cflag[c]] + 0.2); }
+      bt.leader = cleader[lc]; bt.flagComp = lc; role[bt.leader] = u.role === "guard" ? 4 : 2;
+      if (u.role === "guard"){ g.gi = bt.leader; mor[bt.leader] = 1; }
+      bt.alive = u.n * SPC;
+    }
+    bats[g.horse].order = { type: "follow", bat: g.guard };
+  }
+  for (const g of gens){ g.x = sx[g.gi]; g.y = sy[g.gi]; }
+  buildNav();
+  for (let i = 0; i < M; i++){ if (terAt(sx[i], sy[i]) !== RIVER) continue;
+    for (let r = 5; r <= 60; r += 5){ let done = false; for (let a = 0; a < 12 && !done; a++){ const nx = sx[i] + Math.cos(a * 0.524) * r, ny = sy[i] + Math.sin(a * 0.524) * r;
+      if (nx > 1 && ny > 1 && nx < W - 1 && ny < H - 1 && terAt(nx, ny) !== RIVER){ sx[i] = nx; sy[i] = ny; done = true; } } if (done) break; } }
+  morP.set(mor);
+  stats();
+}
+function companyCache(c, bt){ const s = spacing(ctype[c], bt.sp); csx[c] = s[0]; csy[c] = s[1]; ccos[c] = Math.cos(bt.a); csin[c] = Math.sin(bt.a); }
+// 中隊の基準点(前の列の真ん中)の持ち場
+function compSlot(bt, c, bx, by, ba, bsp){
+  const s = spacing(ctype[c], bsp), cols = COLS[ctype[c]], rows = SPC / cols;
+  const cw = (cols - 1) * s[0], cd = (rows - 1) * s[1], g = 4 + s[0] * 2;
+  const nr = bt.rows[crow[c]], lat = (ccol[c] - (nr - 1) / 2) * (cw + g), fwd = crow[c] === 0 ? 0 : -(cd + (bt.support ? 5 : 32));
+  const fx = Math.cos(ba), fy = Math.sin(ba);
+  return [bx + fx * fwd - fy * lat, by + fy * fwd + fx * lat];
+}
+function soldierSlot(i){
+  const c = scomp[i], cols = ccols[c], rows = SPC / cols; let fwd, lat;
+  if (role[i] === 1 || role[i] === 2 || role[i] === 4){ fwd = -((rows - 1) * csy[c] + 2.5); lat = -0.9; }
+  else if (role[i] === 3){ fwd = -((rows - 1) * csy[c] + 2.5); lat = 0.9; }
+  else { const q = sslot[i]; fwd = -((q / cols) | 0) * csy[c]; lat = (q % cols - (cols - 1) / 2) * csx[c]; }
+  return [cpx[c] + ccos[c] * fwd - csin[c] * lat, cpy[c] + csin[c] * fwd + ccos[c] * lat];
+}
+const leaderOK = c => cleaderless[c] === 0 && st[cleader[c]] === FORM;
+const flagOK = c => cflagDown[c] === 0 && st[cflag[c]] === FORM;
+// 別の部隊の中隊と入り込み合っている大隊を見つける(遠くの軽い計算から外すため)
+const cMidX = TA(Float32Array, C), cMidY = TA(Float32Array, C), cRad = TA(Float32Array, C);
+function findCross(){
+  bCross.fill(0);
+  for (let c = 0; c < C; c++){ const n = calive[c] - crout[c]; cRad[c] = 0; if (n < 10) continue;
+    const b = bats[cbat[c]], s0 = spacing(ctype[c], b.sp), cols = ccols[c], rows = SPC / cols;
+    cRad[c] = Math.min((cols - 1) * s0[0], (rows - 1) * s0[1]) / 2 + 1;
+    cMidX[c] = cpx[c] - ccos[c] * (rows - 1) * s0[1] / 2; cMidY[c] = cpy[c] - csin[c] * (rows - 1) * s0[1] / 2; }
+  for (let a = 0; a < C; a++){ if (!cRad[a]) continue; const ba = cbat[a], sa = bats[ba].side;
+    for (let b = a + 1; b < C; b++){ if (!cRad[b] || cbat[b] === ba || bats[cbat[b]].side !== sa) continue;
+      const r = cRad[a] + cRad[b], dx = cMidX[a] - cMidX[b], dy = cMidY[a] - cMidY[b];
+      if (dx * dx + dy * dy < r * r){ bCross[ba] = 1; bCross[cbat[b]] = 1; } } }
+}
+// 遠くの兵の軽い計算:まわりを見回らず、判断もせず、隊形の自分の場所について歩くだけ
+// 立つ場所・速さ・地形の遅さは、ふつうの計算と同じ式。見え方は変わらない
+function farStep(i){
+  const c = scomp[i], cols = ccols[c], q = sslot[i], fx = ccos[c], fy = csin[c], dis = 1 - cOrd[c];
+  const fwd = -((q / cols) | 0) * csy[c] + jy[i] * dis * 1.8, lat = (q % cols - (cols - 1) / 2) * csx[c] + jx[i] * dis * 2.2;
+  const x = sx[i], y = sy[i], ex = cpx[c] + fx * fwd - fy * lat - x, ey = cpy[c] + fy * fwd + fx * lat - y, dd = Math.sqrt(ex * ex + ey * ey);
+  const cav = scav[i], vmax = cav ? (cRunF[c] ? 0.78 : 0.4) : (cRunF[c] ? 0.26 : 0.17);
+  let mx = 0, my = 0;
+  if (dd > 0.05){ const v = Math.min(vmax, dd); mx = ex / dd * v; my = ey / dd * v; }
+  if (cav){ const sp = Math.sqrt(mx * mx + my * my); rspd[i] = sp; if (sp > 0.02){ pfx[i] = mx / sp; pfy[i] = my / sp; } else { pfx[i] = fx; pfy[i] = fy; } }
+  else { pfx[i] = fx; pfy[i] = fy; }
+  if ((mx || my) && !mapSimple){ const tf = TSPD[ctype[c]][ter[((y / TC) | 0) * TW + ((x / TC) | 0)]] || 0.45; mx *= tf; my *= tf; }
+  let nx = x + mx, ny = y + my;
+  if (mapWater && ter[((ny / TC) | 0) * TW + ((nx / TC) | 0)] === RIVER && terAt(x, y) !== RIVER){ nx = x; ny = y; }
+  nx = Math.max(0.5, Math.min(W - 0.5, nx)); ny = Math.max(0.5, Math.min(H - 0.5, ny));
+  mv[i] = Math.sqrt((nx - x) ** 2 + (ny - y) ** 2); sx[i] = nx; sy[i] = ny;
+  fat[i] = Math.max(0, fat[i] - 0.0006); fighting[i] = 0; tgtB[i] = -1; tgtF[i] = -1; lastU[i] = tick;
+}
+// 考えない刻みの兵:最後に考えた「中隊から見た立つ場所」へ歩くだけ(中隊が動けば、場所もついて動く)
+function walkStep(i){
+  const c = scomp[i], fx = ccos[c], fy = csin[c], fwd = ofw[i], lat = olt[i];
+  const x = sx[i], y = sy[i], ex = cpx[c] + fx * fwd - fy * lat - x, ey = cpy[c] + fy * fwd + fx * lat - y, dd = Math.sqrt(ex * ex + ey * ey);
+  if (dd < 0.05){ mv[i] = 0; return; }
+  const v = Math.min(ovm[i], dd); let mx = ex / dd * v, my = ey / dd * v;
+  if (!mapSimple){ const tf = TSPD[ctype[c]][ter[((y / TC) | 0) * TW + ((x / TC) | 0)]] || 0.45; mx *= tf; my *= tf; }
+  let nx = x + mx, ny = y + my;
+  if (mapWater && ter[((ny / TC) | 0) * TW + ((nx / TC) | 0)] === RIVER && terAt(x, y) !== RIVER){ nx = x; ny = y; }
+  nx = Math.max(0.5, Math.min(W - 0.5, nx)); ny = Math.max(0.5, Math.min(H - 0.5, ny));
+  mv[i] = Math.sqrt((nx - x) ** 2 + (ny - y) ** 2); sx[i] = nx; sy[i] = ny;
+}
+function batPos(bt){ const l = bt.leader; return (l >= 0 && st[l] < DEAD) ? [sx[l], sy[l]] : [bt.x, bt.y]; }
+
+function rebuildHash(){
+  for (let k = 0; k < nUsed; k++) head[used[k]] = -1;
+  nUsed = 0;
+  // 区画の並び順が青・赤で偏らないように、刻みごとに入れる順を逆にする(上限で打ち切るときの見落としが片方に寄らない)
+  const rev = (tick & 1) === 1;
+  for (let n = 0; n < M; n++){ const i = rev ? M - 1 - n : n; if (st[i] >= DEAD) continue;
+    const hx = sx[i] / CS | 0, hy = sy[i] / CS | 0; if (hx < 0 || hy < 0 || hx >= HW || hy >= HH) continue;
+    const h = hy * HW + hx; if (head[h] < 0) used[nUsed++] = h; nxt[i] = head[h]; head[h] = i; }
+}
+function stats(){
+  calive.fill(0); crout.fill(0); cfight.fill(0); coarse[0].fill(0); coarse[1].fill(0); coarseR.fill(0); cfatA.fill(0); cmorA.fill(0); cfatF.fill(0); cnF.fill(0);
+  for (let i = 0; i < M; i++){ if (st[i] >= DEAD) continue; const c = scomp[i]; calive[c]++; if (st[i] === ROUT){ crout[c]++; const gx = sx[i] / CG | 0, gy = sy[i] / CG | 0; if (gx >= 0 && gy >= 0 && gx < GW2 && gy < GH2) coarseR[gy * GW2 + gx]++; } else {
+      const gx = sx[i] / CG | 0, gy = sy[i] / CG | 0; if (gx >= 0 && gy >= 0 && gx < GW2 && gy < GH2) coarse[sside[i]][gy * GW2 + gx]++; }
+    if (fighting[i]) cfight[c]++; if (st[i] === FORM){ cfatA[c] += fat[i]; cmorA[c] += mor[i]; if (!role[i] && sslot[i] < ccols[c] * 2){ cfatF[c] += fat[i]; cnF[c]++; } } }
+  for (let c = 0; c < C; c++){ cWall[c] = -1; if (ctype[c] !== CAV) continue;
+    let o = -1, od = 70; for (let e = 0; e < C; e++){ if (ctype[e] !== INF || bats[cbat[e]].side === bats[cbat[c]].side || calive[e] - crout[e] < 20) continue; const d = hyp(cpx[e] - cpx[c], cpy[e] - cpy[c]); if (d < od){ od = d; o = e; } }
+    if (o >= 0){ const steady = cmorA[o] > 0.45 && cOrd[o] > 0.5 && (cwep[o] === 1 || bats[cbat[o]].sp === 0), dx = cpx[c] - cpx[o], dy = cpy[c] - cpy[o], d = hyp(dx, dy) || 1;
+      if (steady && (Math.cos(cang[o]) * dx + Math.sin(cang[o]) * dy) / d > 0.3) cWall[c] = o; } }
+  for (let c = 0; c < C; c++){ const n = calive[c] - crout[c]; if (n > 0){ cfatA[c] /= n; cmorA[c] /= n; } if (cnF[c] > 0) cfatF[c] /= cnF[c];
+    // 息を整える:前の2列の疲れが溜まったら、前の列が少し下がって間合いを取る
+    if (!cEbb[c] && cfatF[c] > 0.55) cEbb[c] = 1; else if (cEbb[c] && cfatF[c] < 0.3) cEbb[c] = 0; }
+  for (let c = 0; c < C; c++){
+    let bd = 1e9, bc = -1, bdA = 1e9, bcA = -1; const myS = bats[cbat[c]].side;
+    if (calive[c] - crout[c] > 0) for (let e = 0; e < C; e++){
+      if (bats[cbat[e]].side === myS || calive[e] - crout[e] <= 0) continue;
+      const d = hyp(cpx[e] - cpx[c], cpy[e] - cpy[c]); if (d < bd){ bd = d; bc = e; }
+      if (d < bdA){ bdA = d; bcA = e; }
+    }
+    { const b0 = bats[cbat[c]], tt = terAt(cpx[c], cpy[c]); let d = 0;
+      if (cfight[c] > 3) d -= 0.006 + 0.02 * cfight[c] / SPC; if (tt === FOREST || tt === MARSH || tt === FORD) d -= 0.01; if (b0.run) d -= 0.004;
+      if (bd > 60 && leaderOK(c)) d += 0.012; else if (cfight[c] <= 3) d += 0.003;
+      d -= Math.min(0.05, cXb[c] * 0.0015 + cRh[c] * 0.002); cXb[c] = 0; cRh[c] = 0;   // 別の部隊と交差した・逃げる味方に突っ込まれた
+      cOrd[c] = Math.max(0.15, Math.min(1, cOrd[c] + d)); }
+    cengaged[c] = (bd < (ctype[c] === CAV ? 60 : 40) || cfight[c] > 0) ? 1 : 0;
+    cFar[c] = 0;
+    if (bd > 120 && cfight[c] === 0 && crout[c] === 0 && ctype[c] !== CAV && !bCross[cbat[c]]){   // 敵が120m以内にいない・逃げる兵もいない・別の部隊と重なっていない(騎兵は加速の決まりがあるので除く)
+      const gx = cpx[c] / CG | 0, gy = cpy[c] / CG | 0; let r = 0;
+      for (let yy = Math.max(0, gy - 3); yy <= Math.min(GH2 - 1, gy + 3); yy++) for (let xx = Math.max(0, gx - 3); xx <= Math.min(GW2 - 1, gx + 3); xx++) r += coarseR[yy * GW2 + xx];
+      cFar[c] = r === 0 ? 1 : 0; } ctarget[c] = bdA < 185 ? bcA : -1; cOpp[c] = bd < 45 ? bc : -1;
+  }
+  for (const bt of bats){
+    let a = 0, r = 0; for (const c of bt.comps){ a += calive[c]; r += crout[c]; }
+    bt.alive = a; bt.rout = r;
+    { let sm = 0, n = 0; for (const c of bt.comps) for (let k = 0; k < mcount[c]; k++){ const i = members[c * SPC + k]; if (st[i] === FORM && scomp[i] === c){ sm += mor[i]; n++; } } bt.mor = n ? sm / n : 0; }
+    const size = bt.comps.length * SPC;
+    if (!bt.broken && a > 0 && (a - r) < size * 0.3){ bt.broken = true; bt.self = null; events.push("broken", bt.id);
+      // 崩れても、長が生きていれば後ろで立て直そうとする
+      const e = nearestFoeBat(bt, 3000, false), dx = e ? bt.x - e.x : (bt.side ? 1 : -1), dy = e ? bt.y - e.y : 0, d = hyp(dx, dy) || 1;
+      bt.rallyPt = [Math.max(30, Math.min(W - 30, bt.x + dx / d * 200)), Math.max(30, Math.min(H - 30, bt.y + dy / d * 200))]; }
+    if (bt.broken && (a - r) > size * 0.3 && r < a * 0.2 && !bt.comps.some(c => cfight[c] > 3)){ bt.broken = false; bt.rallyPt = null; events.push("recovered", bt.id); }
+    bt.contact = bt.comps.some(c => !cord[c] && crow[c] === 0 && cfight[c] > 8) || (bt.type === CAV && bt.comps.some(c => !cord[c] && cfight[c] > 8));
+  }
+  if (tick % 20 === 0) for (const sd of [0, 1]){
+    const l = []; for (let c = 0; c < C; c++){ const b = bats[cbat[c]]; if (b.side !== sd || !flagOK(c) || cengaged[c] || calive[c] - crout[c] < 15) continue; l.push(c); }
+    rallyList[sd] = l;
+  }
+  for (const g of gens){
+    if (!g.dead && st[g.gi] >= DEAD){ g.dead = true; g.deadT = tick; events.push("general", g.side);
+      for (let i = 0; i < M; i++) if (sside[i] === g.side && st[i] < DEAD) mor[i] -= 0.18; }
+    if (g.dead && tick - g.deadT > 300 && !g.succ){
+      // 跡継ぎ:近衛か、残っている大隊の長が指揮を引き継ぐ
+      const cand = [bats[g.guard], ...bats.filter(b => b.side === g.side)].find(b => !b.broken && b.leader >= 0 && st[b.leader] === FORM);
+      if (cand){ g.succ = true; g.gi = cand.leader; events.push("succession", g.side); }
+    }
+    if (st[g.gi] < DEAD){ g.x = sx[g.gi]; g.y = sy[g.gi]; }
+  }
+}
+
+// ───── 命令の伝え方:伝令(騎馬が走る)と狼煙 ─────
+function canCommand(sd){ const g = gens[sd]; return !g.dead || g.succ; }
+function sendOrder(bt, ord){
+  const g = gens[bt.side]; if (!canCommand(bt.side)) return false;
+  const p = batPos(bt), d = hyp(p[0] - g.x, p[1] - g.y);
+  if (bt.id === g.guard || d < 25){ msgs.push({ sd: bt.side, bat: bt.id, ord, x: g.x, y: g.y, t0: tick, near: true, wait: 8 }); return true; }  // 声の届く近さ
+  const kindOf = o => o.type === "space" ? "s" : o.type === "pace" ? "p" : "m";
+  msgs = msgs.filter(m => !(m.bat === bt.id && kindOf(m.ord) === kindOf(ord) && m.wait > 0));   // まだ出ていない古い命令は書き直す
+  msgs.push({ sd: bt.side, bat: bt.id, ord, x: g.x, y: g.y, t0: tick, wait: 15 });   // 書状を書いて渡すまで1.5秒
+  return true;
+}
+function lightSmoke(sd, kind){
+  const g = gens[sd]; if (!canCommand(sd) || g.smokeCD > tick) return false;
+  smokes.push({ sd, kind, x: g.x, y: g.y, t0: tick, lit: tick + 120 }); g.smokeCD = tick + 450;
+  for (const bt of bats){ if (bt.side !== sd || bt.role === "guard" || bt.role === "horse") continue;
+    smokeQ.push({ bat: bt.id, kind, t: tick + 120 + 15 + (rnd() * 50 | 0) }); }   // 上がってから、気づくまでに少しかかる
+  events.push("smoke", sd);
+  return true;
+}
+function applyOrder(bt, ord){
+  if (ord.space != null) bt.sp = ord.space;
+  if (ord.pace != null) bt.pace = ord.pace;
+  if (ord.type === "space"){ bt.sp = ord.level; return; }
+  if (ord.type === "pace"){ bt.pace = ord.level; return; }
+  if (ord.type === "back"){ const fx = Math.cos(bt.a), fy = Math.sin(bt.a); bt.order = { type: "back", x: bt.x - fx * 150, y: bt.y - fy * 150 }; bt.auto = -1; return; }
+  bt.order = ord; bt.auto = -1; if (bt.type === CAV) bt.cav.st = "idle";
+  // 気質:忠実でない慎重な長は、攻めの命令をすぐには実行しない
+  if (ord.type === "attack" && bt.obey < 0.4 && bt.bold < 0.45 && bt.role !== "guard"){ bt.hes = tick + 150 + (rnd() * 250 | 0); events.push("hesitate", bt.id); }
+}
+function updateMsgs(){
+  for (const m of msgs){
+    if (m.dead || m.done) continue;
+    if (m.wait > 0){ m.wait--; if (m.wait === 0 && !m.near){ const g = gens[m.sd]; m.x = g.x; m.y = g.y; } continue; }
+    const bt = bats[m.bat];
+    if (m.near){ if (!bt.broken){ applyOrder(bt, m.ord); events.push("arrive", bt.id); } m.done = true; continue; }
+    const p = batPos(bt), dx = p[0] - m.x, dy = p[1] - m.y, d = hyp(dx, dy);
+    if (d < 7){ if (!bt.broken){ applyOrder(bt, m.ord); events.push("arrive", bt.id); } m.done = true; continue; }
+    const v = Math.min(0.8, d); m.x += dx / d * v; m.y += dy / d * v;     // 馬で8m/秒
+    // 敵の近くを通ると、討たれることがある
+    if ((tick & 3) === 0){
+      const hx = m.x / CS | 0, hy = m.y / CS | 0; let danger = 0;
+      for (let yy = hy - 6; yy <= hy + 6 && !danger; yy++){ if (yy < 0 || yy >= HH) continue;
+        for (let xx = hx - 6; xx <= hx + 6 && !danger; xx++){ if (xx < 0 || xx >= HW) continue;
+          for (let j = head[yy * HW + xx]; j >= 0; j = nxt[j]){ if (st[j] === FORM && sside[j] !== m.sd && (sx[j] - m.x) ** 2 + (sy[j] - m.y) ** 2 < 144){ danger = 1; break; } } } }
+      if (danger && rnd() < 0.3){ m.dead = true; m.deadT = tick; events.push("msglost", m.bat); }
+    }
+  }
+  msgs = msgs.filter(m => !(m.done || (m.dead && tick - m.deadT > 30)));
+  for (let k = smokeQ.length - 1; k >= 0; k--){
+    const q = smokeQ[k]; if (q.t > tick) continue; smokeQ.splice(k, 1);
+    const bt = bats[q.bat]; if (bt.broken || bt.alive === 0) continue;
+    if (q.kind === "attack"){ const e = nearestFoeBat(bt, 2000, bt.type !== CAV); if (e) applyOrder(bt, { type: "attack", bat: e.id }); }
+    else applyOrder(bt, { type: q.kind });
+  }
+}
+function nearestFoeBat(bt, maxD, infOnly){
+  let best = null, bd = maxD;
+  for (const e of bats){ if (e.side === bt.side || e.alive - e.rout <= 0) continue; if (infOnly && e.type === CAV) continue;
+    const d = hyp(e.x - bt.x, e.y - bt.y); if (d < bd){ bd = d; best = e; } }
+  return best;
+}
+function angTo(a, b){ let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; }
+
+// 大隊長:受けた命令を、自分の判断も交えて動きに変える
+function updateBat(bt){
+  bt.v = 0; bt.run = false; const vPrev = bt.vc; bt.vc = 0;
+  if (bt.alive === 0) return;
+  if (bt.broken){                                   // 崩れた部隊:長が生きていれば、後ろの集合場所へ旗を下げる
+    if (bt.rallyPt && bt.leader >= 0 && st[bt.leader] === FORM){ const dx = bt.rallyPt[0] - bt.x, dy = bt.rallyPt[1] - bt.y, d = hyp(dx, dy);
+      if (d > 3){ const v = Math.min(0.13, d); bt.x += dx / d * v; bt.y += dy / d * v; bt.v = v; } }
+    return;
+  }
+  // 大隊長の独断:総大将の命令に従いながら、まずいと見れば退いて立て直す(勇猛な長ほど粘る)
+  if (bt.type === INF && bt.role !== "guard" && tick % 20 === 0){
+    const size = bt.comps.length * SPC, good = (bt.alive - bt.rout) / size;
+    const lb = gens[bt.side].bal[Math.max(0, Math.min(SECT - 1, (bt.y / H * SECT) | 0))];
+    const loyal = (bt.obey - 0.5) * 0.12 + (lb > 0.3 ? 0.04 : lb < -0.3 ? -0.05 : 0);   // 忠実な長ほど粘る。自分の区画の形勢も見る
+    if (!bt.self && bt.contact && (bt.mor < 0.37 + (1 - bt.bold) * 0.14 - loyal || (!bt.selfDone && good < 0.45 + (1 - bt.bold) * 0.15 - loyal))){
+      const e = nearestFoeBat(bt, 400, false), dx = e ? bt.x - e.x : -Math.cos(bt.a), dy = e ? bt.y - e.y : -Math.sin(bt.a), d = hyp(dx, dy) || 1;
+      bt.self = { kind: "withdraw", x: Math.max(30, Math.min(W - 30, bt.x + dx / d * 90)), y: Math.max(30, Math.min(H - 30, bt.y + dy / d * 90)), t: tick };
+      events.push("selfback", bt.id);
+    } else if (bt.self && bt.self.kind === "reform" && (bt.mor > 0.55 || tick - bt.self.t > 450)){
+      bt.self = null; bt.selfDone = true; if (bt.bold < 0.4) bt.order = { type: "hold" }; events.push("resume", bt.id);
+    }
+  }
+  const cav = bt.type === CAV;
+  const PS = cav ? [0.15, 0.3, 0.5] : [0.07, 0.12, 0.19];        // 歩調ごとの速さ
+  let gx = bt.x, gy = bt.y, face = bt.a, speed = PS[bt.pace], o = bt.order, eng = null, keepFace = false;
+  if (!cav && bt.pace === 2 && o.type !== "hold") bt.run = true;
+  if (o.type === "attack"){ const e = bats[o.bat]; if (!e || e.alive - e.rout <= 0){ bt.order = o = { type: "hold" }; } else eng = e; }
+  // ためらい:しばらくその場で様子を見る
+  if (eng && bt.hes > tick){ eng = null; o = { type: "hold" }; }
+  // 拒否:忠実でない長は、自分よりずっと強い相手への攻めを渋る
+  if (eng && bt.type === INF && bt.obey < 0.5 && tick % 20 === 0){
+    const mine = bt.alive - bt.rout, theirs = eng.alive - eng.rout, refuse = theirs > mine * (1.3 + bt.obey) && !bt.contact;
+    if (refuse && !bt.refuse) events.push("refuse", bt.id); bt.refuse = refuse; }
+  if (eng && bt.refuse){ eng = null; o = { type: "hold" }; }
+  // 独断の攻め:忠実でない猛将は、近くに弱った敵がいれば命令に関係なく打って出る
+  if (!eng && bt.type === INF && bt.role !== "guard" && bt.obey < 0.45 && bt.bold > 0.55 && (o.type === "hold" || o.type === "move" || o.type === "follow") && !bt.self){
+    const e = nearestFoeBat(bt, 140, false);
+    if (e && (e.rout > e.alive * 0.3 || (e.alive - e.rout) < e.comps.length * SPC * 0.5)){ eng = e; if (bt.initT !== e.id){ bt.initT = e.id; events.push("initiative", bt.id); } } }
+  if (o.type === "follow"){ const t = bats[o.bat]; if (!t || t.alive === 0){ bt.order = o = { type: "hold" }; }
+    else { const fx = Math.cos(t.a), fy = Math.sin(t.a), side = bt.side === 0 ? 1 : -1; gx = t.x - fy * 85 * side - fx * 10; gy = t.y + fx * 85 * side - fy * 10; face = t.a; keepFace = true;
+      const e = nearestFoeBat(bt, 70, false); if (e) eng = e; } }
+  if (o.type === "move"){ gx = o.x; gy = o.y; if (bt.type !== ARCH){ const e = nearestFoeBat(bt, cav ? 60 : 75, false); if (e) eng = e; } }
+  if (o.type === "hold"){ const e = nearestFoeBat(bt, 180, false); if (e) face = Math.atan2(e.y - bt.y, e.x - bt.x);
+    if (bt.type !== ARCH){ const e2 = nearestFoeBat(bt, 28, false); if (e2) eng = e2; } }
+  if (o.type === "back"){ gx = o.x; gy = o.y; speed = cav ? 0.25 : 0.08; keepFace = true; }
+  let withdrawing = false;
+  if (bt.self){
+    if (bt.self.kind === "withdraw"){ gx = bt.self.x; gy = bt.self.y; speed = 0.13; keepFace = true; withdrawing = true; eng = null;
+      if (hyp(gx - bt.x, gy - bt.y) < 6){ bt.self = { kind: "reform", t: tick }; } }
+    if (bt.self && bt.self.kind === "reform"){ gx = bt.x; gy = bt.y; speed = 0; eng = null; const e = nearestFoeBat(bt, 300, false); if (e){ face = Math.atan2(e.y - bt.y, e.x - bt.x); keepFace = true; } }
+  }
+  bt.withdrawing = withdrawing;
+  if (eng && !bt.self){ gx = eng.x; gy = eng.y; bt.auto = eng.id; const d = hyp(gx - bt.x, gy - bt.y);
+    if (!cav && bt.pace > 0 && d < (bt.pace === 2 ? 150 : 70)){ speed = bt.pace === 2 ? 0.21 : 0.2; bt.run = true; } }
+  // 地形を読む:騎兵は森や沼にいる敵には突っ込まない
+  if (cav && eng && !bt.contact){ const te = terAt(eng.x, eng.y);
+    if (te === FOREST || te === MARSH){ face = Math.atan2(eng.y - bt.y, eng.x - bt.x); keepFace = true; if (bt.terNote !== eng.id){ bt.terNote = eng.id; events.push("cavwait", bt.id); } eng = null; gx = bt.x; gy = bt.y; } }
+  // 地形を読む:慎重な長は、坂の上の敵へ攻め上がらず、降りてくるのを待つ(よほど忠実なら行く)
+  if (eng && bt.type === INF && !bt.contact && bt.bold < 0.5 && bt.obey < 0.75 && hAt(eng.x, eng.y) - hAt(bt.x, bt.y) > 6){
+    face = Math.atan2(eng.y - bt.y, eng.x - bt.x); keepFace = true; if (bt.terNote !== eng.id){ bt.terNote = eng.id; events.push("uphill", bt.id); } eng = null; gx = bt.x; gy = bt.y; }
+  // 騎兵:突撃して、決まらなければ下がって組み直し、また突撃する
+  if (cav && eng && o.type !== "back"){
+    const C2 = bt.cav, d = hyp(eng.x - bt.x, eng.y - bt.y);
+    if (C2.st === "idle" || C2.st === "ready"){ C2.st = "charge"; if (bt.pace > 0) events.push("charge", bt.id); }
+    // 歩調:ゆっくりなら並み足で寄せる(突撃しない)。ふつうは最後の80mだけ、急げば140m手前から駆ける
+    if (C2.st === "charge" && !bt.contact && d < 45 && vPrev < 0.06){ if (++C2.halt > 100){ C2.halt = 0; const dd = d || 1; C2.st = "withdraw"; C2.gx = bt.x + (bt.x - eng.x) / dd * 150; C2.gy = bt.y + (bt.y - eng.y) / dd * 150; events.push("balk", bt.id); } } else if (C2.st !== "charge") C2.halt = 0;
+    if (C2.st === "charge"){ const reach = bt.pace === 2 ? 140 : bt.pace === 1 ? 80 : -1;
+      speed = d > reach ? (bt.pace === 2 ? 0.5 : bt.pace === 1 ? 0.35 : 0.15) : 0.9; bt.run = d <= reach; if (bt.contact){ C2.st = "melee"; C2.t = 130; } }
+    else if (C2.st === "melee"){ speed = 0.1; bt.run = C2.t > 95; if (--C2.t <= 0){ const winning = eng.rout > eng.alive * 0.45;
+        if (!winning){ const dd = d || 1; C2.st = "withdraw"; C2.gx = bt.x + (bt.x - eng.x) / dd * 150; C2.gy = bt.y + (bt.y - eng.y) / dd * 150; } else C2.t = 60; } }
+    if (C2.st === "withdraw"){ gx = C2.gx; gy = C2.gy; speed = 0.45; bt.run = true; eng = null;
+      if (hyp(gx - bt.x, gy - bt.y) < 8){ C2.st = "reform"; C2.t = 90; } }
+    else if (C2.st === "reform"){ gx = bt.x; gy = bt.y; face = Math.atan2(bats[bt.auto].y - bt.y, bats[bt.auto].x - bt.x); speed = 0; eng = null; if (--C2.t <= 0) C2.st = "ready"; }
+  } else if (cav && !eng && bt.cav.st !== "withdraw") bt.cav.st = "idle";
+  // 弓は、敵の歩兵や騎兵が近づいたら下がる
+  if (bt.type === ARCH){ const e = nearestFoeBat(bt, 60, false);
+    if (e){ const d = hyp(bt.x - e.x, bt.y - e.y) || 1; gx = bt.x + (bt.x - e.x) / d * 40; gy = bt.y + (bt.y - e.y) / d * 40; speed = 0.13; face = Math.atan2(e.y - bt.y, e.x - bt.x); keepFace = true; }
+    else if (eng){ gx = bt.x; gy = bt.y; face = Math.atan2(eng.y - bt.y, eng.x - bt.x); } }
+  // 道を選ぶ:川や歩きにくい所があれば、通りやすい道筋を探してたどる。渡し場では縦に細くなる
+  { const dGoal = hyp(gx - bt.x, gy - bt.y);
+    if (dGoal > 15 && !(eng && dGoal < 60)){ const st2 = steer(bt, gx, gy, cav); gx = st2[0]; gy = st2[1]; }
+    else { bt.path = null; }
+    if (bt.contact || dGoal <= 15) { if (bt.column && tick - bt.colT > 60) bt.column = false; } }
+  const dist = hyp(gx - bt.x, gy - bt.y);
+  if (!keepFace && dist > 4) face = Math.atan2(gy - bt.y, gx - bt.x);
+  if (eng && bt.type !== ARCH && !bt.self) face = Math.atan2(eng.y - bt.y, eng.x - bt.x);
+  const da = angTo(bt.a, face); bt.a += Math.max(-(cav ? 0.025 : 0.012), Math.min(cav ? 0.025 : 0.012, da));
+  let coh = 0, n = 0;
+  if (bt.column){ const c0 = bt.comps.find(c => calive[c] > 0 && !cord[c]); if (c0 != null){ const s0 = colSlot(bt, 0, c0); coh = hyp(s0[0] - cpx[c0], s0[1] - cpy[c0]); n = 1; } }
+  else for (const c of bt.comps){ if (calive[c] === 0 || cord[c]) continue; const s = compSlot(bt, c, bt.x, bt.y, bt.a, bt.sp); coh += hyp(s[0] - cpx[c], s[1] - cpy[c]); n++; }
+  bt.cohesion = n ? coh / n : 0;
+  if (bt.contact && o.type !== "back" && !withdrawing && !(cav && bt.cav.st === "withdraw")) return;
+  if (Math.abs(da) > (cav ? 0.6 : 0.35) || dist < 2) return;
+  const tol = (cav && bt.run) || withdrawing ? 3 : bt.pace === 2 ? 1.8 : bt.pace === 0 ? 0.7 : 1;
+  let v = speed * (bt.cohesion < 6 * tol ? 1 : bt.cohesion < 14 * tol ? 0.35 : 0);
+  // 地形で速さが変わる(森・沼・浅瀬は遅く、道は速い。登りは遅い)
+  { const tf = TSPD[bt.type][terAt(bt.x, bt.y)] || 0.45, ux = (gx - bt.x) / (dist || 1), uy = (gy - bt.y) / (dist || 1), sl = (hAt(bt.x + ux * 10, bt.y + uy * 10) - hAt(bt.x, bt.y)) / 10;
+    v *= tf * (sl > 0 ? Math.max(0.45, 1 - 2.2 * sl) : Math.min(1.15, 1 - 0.6 * sl)); }
+  if (cav) v = v > vPrev ? Math.min(v, vPrev + 0.012) : Math.max(v, vPrev - 0.03);   // 騎兵の部隊も、急には速くも遅くもならない
+  bt.vc = v;
+  v = Math.min(v, dist); bt.x += (gx - bt.x) / dist * v; bt.y += (gy - bt.y) / dist * v; bt.v = v;
+  bt.x = Math.max(20, Math.min(W - 20, bt.x)); bt.y = Math.max(20, Math.min(H - 20, bt.y));
+  // 通った跡(縦隊の後ろの中隊は、この跡をたどる)
+  { const hx = bt.trail[bt.th * 2], hy = bt.trail[bt.th * 2 + 1];
+    if (bt.tn === 0 || hyp(bt.x - hx, bt.y - hy) >= 2){ bt.th = (bt.th + 1) % 400; bt.trail[bt.th * 2] = bt.x; bt.trail[bt.th * 2 + 1] = bt.y; bt.tn = Math.min(400, bt.tn + 1); } }
+}
+// 道筋をたどる。行く手に渡し場(浅瀬・橋)があれば縦隊になる
+function steer(bt, gx, gy, cav){
+  const stale = bt.pgx == null || hyp(bt.pgx - gx, bt.pgy - gy) > 40 || tick - bt.pt > 300;
+  if (stale){
+    avoidBat = bt.id; avoidSide = bt.side;
+    if (straightOK(bt.x, bt.y, gx, gy, cav)){ bt.path = null; bt.pgx = gx; bt.pgy = gy; bt.pt = tick; }
+    else if (pathBudget > 0){ pathBudget--; bt.pgx = gx; bt.pgy = gy; bt.pt = tick; bt.pi = 1; bt.path = findPath(bt.x, bt.y, gx, gy, cav); }
+    avoidBat = -1; avoidSide = -1;
+  }
+  let tx = gx, ty = gy;
+  if (bt.path && bt.path.length < 2) bt.path = null;          // 道筋が1点しかない(すぐそば)なら、まっすぐ行く
+  if (bt.path){
+    if (bt.pi >= bt.path.length) bt.pi = bt.path.length - 1;
+    while (bt.pi < bt.path.length - 1 && hyp(bt.path[bt.pi][0] - bt.x, bt.path[bt.pi][1] - bt.y) < 14) bt.pi++;
+    tx = bt.path[bt.pi][0]; ty = bt.path[bt.pi][1];
+  }
+  // 行く手120mに渡し場があるか
+  let cross = terAt(bt.x, bt.y) === FORD || terAt(bt.x, bt.y) === BRIDGE, px = bt.x, py = bt.y, left = 120;
+  const pts = bt.path ? bt.path.slice(bt.pi) : [[gx, gy]];
+  for (const p of pts){
+    if (cross || left <= 0) break;
+    const d = hyp(p[0] - px, p[1] - py), run = Math.min(d, left);
+    for (let q = 5; q <= run; q += 5){ const t = terAt(px + (p[0] - px) * q / d, py + (p[1] - py) * q / d); if (t === FORD || t === BRIDGE){ cross = true; break; } }
+    left -= d; px = p[0]; py = p[1];
+  }
+  if (cross){ bt.column = true; bt.colT = tick; }
+  else if (bt.column && tick - bt.colT > 260) bt.column = false;        // 渡り終えて、しっぽまで渡ったら横隊に戻る
+  return [tx, ty];
+}
+// 縦隊での中隊の持ち場:大隊の通った跡を、前から順にたどる
+function colSlot(bt, k, c){
+  const s = spacing(ctype[c], bt.sp), depth = (SPC / 5 - 1) * s[1] + 8; let need = k * depth + 2;
+  let px = bt.x, py = bt.y, ax = Math.cos(bt.a), ay = Math.sin(bt.a);
+  for (let n = 0; n < bt.tn; n++){
+    const idx = ((bt.th - n) % 400 + 400) % 400, qx = bt.trail[idx * 2], qy = bt.trail[idx * 2 + 1], d = hyp(qx - px, qy - py);
+    if (d >= need && d > 0.01){ const t = need / d; return [px + (qx - px) * t, py + (qy - py) * t, Math.atan2(py - qy, px - qx)]; }
+    need -= d; if (d > 0.01){ ax = (px - qx) / d; ay = (py - qy) / d; } px = qx; py = qy;
+  }
+  return [px - ax * need, py - ay * need, Math.atan2(ay, ax)];
+}
+// 中隊長:大隊長の合図(少し遅れて届く)に合わせて持ち場へ向かう
+function updateComps(){
+  const hi = tick % HIST;
+  const px0 = cpx.slice(), py0 = cpy.slice(), ca0 = ccos.slice();
+  for (const bt of bats){ bt.hist[hi * 4] = bt.x; bt.hist[hi * 4 + 1] = bt.y; bt.hist[hi * 4 + 2] = bt.a; bt.hist[hi * 4 + 3] = bt.sp; }
+  for (let c = 0; c < C; c++){
+    const bt = bats[cbat[c]];
+    // 合図の遅れ:大隊長からの距離が遠いほど遅れる(声と太鼓)
+    const lp = batPos(bt), dl = hyp(cpx[c] - lp[0], cpy[c] - lp[1]);
+    cdelay[c] = Math.min(HIST - 1, 4 + dl * 0.35 | 0);
+    const h = ((tick - cdelay[c]) % HIST + HIST) % HIST, hx = bt.hist[h * 4], hy2 = bt.hist[h * 4 + 1], ha = bt.hist[h * 4 + 2], hs = bt.hist[h * 4 + 3];
+    const s = spacing(ctype[c], hs); csx[c] = s[0]; csy[c] = s[1];
+    crun[c] = 0;
+    if (cord[c]){ ccols[c] = COLS[ctype[c]]; companyOwn(c, bt); continue; }
+    let colS = null;
+    if (bt.column && !bt.broken){ colS = colSlot(bt, bt.comps.indexOf(c), c); ccols[c] = 5; ccos[c] = Math.cos(colS[2]); csin[c] = Math.sin(colS[2]); cang[c] = colS[2]; }
+    else { ccols[c] = COLS[ctype[c]];
+      if (cfight[c] <= 2){ const d = angTo(cang[c], ha), rate = Math.abs(d) > 2.6 ? 0.06 : 0.008 + 0.008 * cOrd[c]; cang[c] += Math.max(-rate, Math.min(rate, d)); }
+      ccos[c] = Math.cos(cang[c]); csin[c] = Math.sin(cang[c]); }
+    if (calive[c] === 0) continue;
+    if (cfight[c] > 8 && bt.order.type !== "back" && !bt.withdrawing && !bt.broken && !(bt.type === CAV && bt.cav.st === "withdraw")){
+      const o = cOpp[c];
+      if (o >= 0 && (tick & 1) === 0){
+        const P = (calive[c] - crout[c]) * (1 - 0.5 * cfatA[c]) * (0.4 + cmorA[c]) * (csup[c] ? 1.2 : 1) * (0.8 + 0.4 * cOrd[c]), Q = (calive[o] - crout[o]) * (1 - 0.5 * cfatA[o]) * (0.4 + cmorA[o]) * (csup[o] ? 1.2 : 1) * (0.8 + 0.4 * cOrd[o]);
+        const r = P / Math.max(1, Q), dx = cpx[o] - cpx[c], dy = cpy[o] - cpy[c], d = hyp(dx, dy) || 1;
+        if (r > 1.15){ cpx[c] += dx / d * 0.02; cpy[c] += dy / d * 0.02; } else if (r < 0.87){ cpx[c] -= dx / d * 0.02; cpy[c] -= dy / d * 0.02; }
+      }
+      continue;
+    }
+    const sl = colS || compSlot(bt, c, hx, hy2, ha, hs), dx = sl[0] - cpx[c], dy = sl[1] - cpy[c], d = hyp(dx, dy);
+    if (d > 0.05){ const v = Math.min(bt.v * 1.4 + (bt.type === CAV ? 0.12 : 0.06), d); cpx[c] += dx / d * v; cpy[c] += dy / d * v; }
+  }
+  for (let c = 0; c < C; c++) if (cchg[c] > 0 && cfight[c] > 8) cchg[c]--;
+  for (let c = 0; c < C; c++){
+    const bt = bats[cbat[c]], o = cord[c], cv = ctype[c] === CAV;
+    cBroken[c] = bt.broken ? 1 : 0; cBack[c] = (bt.withdrawing || bt.broken || (o && o.type === "back")) ? 1 : 0;
+    cRunF[c] = o ? crun[c] : (bt.run ? 1 : 0); cArch[c] = ctype[c] === ARCH ? 1 : 0;
+    cChg[c] = cv && (o ? cchg[c] > 0 : (bt.pace > 0 && bt.run && (bt.cav.st === "charge" || (bt.cav.st === "melee" && bt.cav.t > 95)))) ? 1 : 0;
+    if (cv){ let g;
+      if (o) g = crun[c] ? 1.0 : 0.4;
+      else if (bt.cav.st === "charge") g = bt.run ? 1.0 : [0.15, 0.45, 0.65][bt.pace];
+      else if (bt.cav.st === "melee") g = bt.cav.t > 95 ? 0.6 : 0.25;
+      else if (bt.cav.st === "withdraw") g = 0.65; else if (bt.cav.st === "reform") g = 0.25;
+      else g = bt.run ? 0.65 : [0.15, 0.4, 0.65][bt.pace];
+      cGait[c] = g * (1 - 0.45 * cfatA[c]); }
+    cImpReset[c] = cv && (o ? cchg[c] === 0 && !crun[c] : (bt.cav.st !== "charge" && bt.cav.st !== "melee")) ? 1 : 0;
+    cLOK[c] = leaderOK(c) ? 1 : 0; cFOK[c] = flagOK(c) ? 1 : 0;
+  }
+  for (let c = 0; c < C; c++) cstill[c] = (Math.abs(cpx[c] - px0[c]) + Math.abs(cpy[c] - py0[c]) < 0.002 && Math.abs(ccos[c] - ca0[c]) < 1e-4) ? 1 : 0;   // 中隊の基準点が止まっている
+  // 後ろの中隊を寄せて支えるか(前が押されていて、長に度胸があれば)
+  if (tick % 30 === 0) for (const bt of bats){
+    if (bt.rows.length < 2){ bt.support = false; continue; }
+    let m = 0, n = 0; for (const c of bt.comps) if (crow[c] === 0 && calive[c] > 0){ m += cmorA[c]; n++; }
+    bt.support = !bt.broken && bt.contact && n > 0 && m / n < 0.5 && bt.bold > 0.35;
+    for (const c of bt.comps) csup[c] = bt.support && crow[c] === 0 ? 1 : 0;
+  }
+  if (tick % 30 === 0) for (const bt of bats){ if (bt.broken || bt.rows.length < 2 || bt.type !== INF) continue;
+    for (let col = 0; col < bt.rows[1]; col++){
+      const F = bt.comps.find(c => crow[c] === 0 && ccol[c] === col), R = bt.comps.find(c => crow[c] === 1 && ccol[c] === col);
+      if (F == null || R == null || cord[F] || cord[R]) continue;
+      if (((calive[F] - crout[F]) < 40 || crout[F] > calive[F] * 0.5) && (calive[R] - crout[R]) > 60){ crow[F] = 1; crow[R] = 0; }
+      // 交代:前の中隊が疲れきり、後ろが元気なら入れ替える
+      else if (cfatF[F] > 0.55 && cfatA[R] < 0.3 && (calive[R] - crout[R]) > 50 && crout[F] < calive[F] * 0.3){ crow[F] = 1; crow[R] = 0; if ((tick & 63) === 0) events.push("relief", bt.id); }
+    } }
+}
+// 中隊に直接出した命令(伝令なし。大隊長がその場で指図する)
+function companyOwn(c, bt){
+  const o = cord[c], cav = ctype[c] === CAV; let gx = cpx[c], gy = cpy[c], face = cang[c], speed = cav ? 0.35 : 0.13;
+  if (calive[c] === 0){ cord[c] = null; return; }
+  if (o.type === "attack"){ const e = bats[o.bat];
+    if (!e || e.alive - e.rout <= 0){ cord[c] = { type: "hold" }; }
+    else { let best = -1, bd = 1e9; for (const ec of e.comps){ if (calive[ec] - crout[ec] <= 0) continue; const d = hyp(cpx[ec] - cpx[c], cpy[ec] - cpy[c]); if (d < bd){ bd = d; best = ec; } }
+      if (best >= 0){ gx = cpx[best]; gy = cpy[best]; face = Math.atan2(gy - cpy[c], gx - cpx[c]);
+        if (cav){ if (bd < 140){ speed = 0.68; crun[c] = 1; if (cchg[c] === 0 && bd > 30) cchg[c] = 40; } }
+        else if (bd < 60){ speed = 0.2; crun[c] = 1; } } } }
+  if (o.type === "move" || o.type === "back"){ gx = o.x; gy = o.y; if (o.type === "move" && hyp(gx - cpx[c], gy - cpy[c]) > 4) face = Math.atan2(gy - cpy[c], gx - cpx[c]); if (o.type === "back") speed *= 0.7; }
+  if (o.type === "post"){                         // 大隊の横に出て、敵の方を向いて構える
+    const e = bats[o.bat], half = batHalf(bt), fx = Math.cos(bt.a), fy = Math.sin(bt.a);
+    gx = bt.x - fy * (half + 22) * o.side - fx * 14; gy = bt.y + fx * (half + 22) * o.side - fy * 14;
+    if (e && e.alive > 0) face = Math.atan2(e.y - cpy[c], e.x - cpx[c]);
+    if (hyp(gx - cpx[c], gy - cpy[c]) < 3) speed = 0; }
+  if (o.type === "flank"){                        // 敵の部隊の横へ回り込み、横から突く
+    const e = bats[o.bat];
+    if (!e || e.alive - e.rout <= 0){ cord[c] = null; return; }
+    const half = batHalf(e), fx = Math.cos(bt.a), fy = Math.sin(bt.a);   // 自分の大隊から見た右・左
+    const px = e.x - fy * (half + 18) * o.side + fx * 10, py = e.y + fx * (half + 18) * o.side + fy * 10, dp = hyp(px - cpx[c], py - cpy[c]);
+    if (dp > 14 && cfight[c] < 5){ gx = px; gy = py; face = Math.atan2(gy - cpy[c], gx - cpx[c]); speed = cav ? 0.4 : 0.15; }
+    else { let best = -1, bd = 1e9; for (const ec of e.comps){ if (calive[ec] - crout[ec] <= 0) continue; const d = hyp(cpx[ec] - cpx[c], cpy[ec] - cpy[c]); if (d < bd){ bd = d; best = ec; } }
+      if (best >= 0){ gx = cpx[best]; gy = cpy[best]; face = Math.atan2(gy - cpy[c], gx - cpx[c]); speed = 0.2; crun[c] = 1; } } }
+  if (o.type === "hold"){ let bd = 150, best = -1; for (let e = 0; e < C; e++){ if (bats[cbat[e]].side === bt.side || calive[e] - crout[e] <= 0) continue; const d = hyp(cpx[e] - cpx[c], cpy[e] - cpy[c]); if (d < bd){ bd = d; best = e; } }
+    if (best >= 0) face = Math.atan2(cpy[best] - cpy[c], cpx[best] - cpx[c]); }
+  const da = angTo(cang[c], face); if (cfight[c] <= 2) cang[c] += Math.max(-0.03, Math.min(0.03, da));
+  ccos[c] = Math.cos(cang[c]); csin[c] = Math.sin(cang[c]);
+  if (cfight[c] > 8 && o.type !== "back") return;
+  if (Math.abs(da) > 0.5) return;
+  const dx = gx - cpx[c], dy = gy - cpy[c], d = hyp(dx, dy);
+  if (d > 0.5){ const v = Math.min(speed, d); cpx[c] += dx / d * v; cpy[c] += dy / d * v; }
+}
+function batHalf(bt){ const c = bt.comps[0], s = spacing(ctype[c], bt.sp), cols = COLS[ctype[c]], cw = (cols - 1) * s[0], g = 4 + s[0] * 2; return (bt.rows[0] * (cw + g) - g) / 2; }
+// 大隊長から中隊への指図:近ければ声と太鼓(わずかな遅れ)、遠ければ伝令の兵が走る
+function batCmd(bt, c, ord){
+  const L = batPos(bt), d = hyp(cpx[c] - L[0], cpy[c] - L[1]);
+  bt.sent[c] = { key: okey(ord), t: tick };
+  runners = runners.filter(r => r.c !== c); cq = cq.filter(q => q.c !== c);
+  if (d <= 60) cq.push({ c, ord, t: tick + 5 + Math.round(d * 0.35) });
+  else runners.push({ sd: bt.side, bat: bt.id, c, ord, x: L[0], y: L[1], t0: tick });
+}
+const okey = o => o ? o.type + ":" + (o.bat == null ? "" : o.bat) + ":" + (o.side || 0) : "none";
+function updateBatCmds(){
+  for (let k = cq.length - 1; k >= 0; k--){ if (cq[k].t > tick) continue; const q = cq[k]; cq.splice(k, 1); orderCompany(q.c, q.ord); }
+  for (const r of runners){
+    if (r.dead || r.done) continue;
+    const dx = cpx[r.c] - r.x, dy = cpy[r.c] - r.y, d = hyp(dx, dy);
+    if (d < 5 || calive[r.c] === 0){ if (calive[r.c] > 0) orderCompany(r.c, r.ord); r.done = true; continue; }
+    const v = Math.min(0.45, d); r.x += dx / d * v; r.y += dy / d * v;      // 走って4.5m/秒
+    if ((tick & 3) === 1 && enemyNear(r.x, r.y, r.sd, 10) && rnd() < 0.3){ r.dead = true; r.deadT = tick; }
+  }
+  runners = runners.filter(r => !(r.done || (r.dead && tick - r.deadT > 30)));
+}
+// 大隊長の采配:中隊を使い分ける。気質と忠実さで、使い方と命令への忠実さが変わる
+function companyAI(bt){
+  if (bt.type === CAV || bt.role === "guard") return;
+  const want = {};
+  const usable = c => calive[c] - crout[c] > 50;
+  if (!bt.broken && !bt.self && bt.alive > 0 && bt.type === INF){
+    const rear = bt.comps.filter(c => crow[c] === 1 && usable(c)), front = bt.comps.filter(c => crow[c] === 0 && usable(c));
+    const take = side => { if (!rear.length) return -1; rear.sort((a, b) => side * (ccol[b] - ccol[a])); return rear.shift(); };
+    const fx = Math.cos(bt.a), fy = Math.sin(bt.a), eng = bt.auto >= 0 ? bats[bt.auto] : null;
+    // 横を守る:横や後ろから迫る敵がいれば、後ろの中隊をそちらに向ける
+    for (const e of bats){
+      if (e.side === bt.side || e.alive - e.rout <= 0 || e === eng) continue;
+      const dx = e.x - bt.x, dy = e.y - bt.y, d = hyp(dx, dy); if (d > 160 || d < 1) continue;
+      const dot = (dx * fx + dy * fy) / d; if (dot > 0.35) continue;
+      const side = (-fy * dx + fx * dy) > 0 ? 1 : -1;
+      if (flankCovered(bt.x, bt.y, -fy * side, fx * side)) continue;          // 川や森がその横を守っている
+      const c = take(side); if (c < 0) break;
+      want[c] = { type: "post", bat: e.id, side }; break;
+    }
+    if (eng && bt.contact && eng.rout < eng.alive * 0.5){
+      // 回り込み:列に余りがあれば、端の中隊を敵の横へ回す(勇猛な長ほど多く回す)
+      const n = bt.bold > 0.7 ? 2 : bt.bold > 0.4 ? 1 : 0;
+      const sides = [1, -1].sort(() => rnd() - 0.5);
+      for (let k = 0; k < n; k++){ const side = sides[k], c = take(side); if (c < 0) break; want[c] = { type: "flank", bat: eng.id, side }; }
+    }
+    // 追い討ち:敵が崩れたら、一部の中隊に追わせる(慎重な長は追わない。忠実でない猛将は深追いする)
+    if (eng && eng.rout > eng.alive * 0.5 && bt.bold > 0.45){
+      const n = bt.obey < 0.4 && bt.bold > 0.65 ? 4 : 2;
+      front.sort((a, b) => (calive[b] - crout[b]) - (calive[a] - crout[a]));
+      for (let k = 0; k < Math.min(n, front.length); k++) want[front[k]] = { type: "attack", bat: eng.id };
+    }
+  }
+  bt.plan = want;
+  for (const c of bt.comps){
+    const w = want[c] || null, cur = okey(cord[c]), wk = okey(w), sent = bt.sent[c];
+    if (cur === wk) continue;
+    if (runners.some(r => r.c === c && !r.dead && okey(r.ord) === wk) || cq.some(q => q.c === c && okey(q.ord) === wk)) continue;   // 伝えている途中
+    if (sent && sent.key === wk && tick - sent.t < 60) continue;    // 伝令が討たれたら、少し待って出し直す
+    batCmd(bt, c, w);
+  }
+}
+function orderCompany(c, ord){
+  if (ord == null){ cord[c] = null; return; }
+  if (ord.type === "back"){ const fx = Math.cos(cang[c]), fy = Math.sin(cang[c]); cord[c] = { type: "back", x: cpx[c] - fx * 80, y: cpy[c] - fy * 80 }; return; }
+  if (!cord[c]){ cang[c] = Math.atan2(csin[c], ccos[c]); }
+  cord[c] = ord;
+}
+function compact(){
+  const byCol = [];
+  for (let c = 0; c < C; c++){
+    const cols = ccols[c]; byCol.length = 0; for (let k = 0; k < cols; k++) byCol.push([]);
+    let n = 0;
+    for (let k = 0; k < mcount[c]; k++){ const i = members[c * SPC + k]; if (st[i] < DEAD && scomp[i] === c && !role[i]){ byCol[Math.min(cols - 1, sslot[i] % cols)].push(i); members[c * SPC + n++] = i; } }
+    mcount[c] = n;
+    for (const col of byCol) col.sort((a, b) => sslot[a] - sslot[b]);
+    // 短い列には、隣の長い列のいちばん後ろの兵が横へ移る
+    for (let guard = 0; guard < 20; guard++){
+      let mx = 0, mn = 0; for (let k = 1; k < cols; k++){ if (byCol[k].length > byCol[mx].length) mx = k; if (byCol[k].length < byCol[mn].length) mn = k; }
+      if (byCol[mx].length - byCol[mn].length <= 1) break;
+      byCol[mn].push(byCol[mx].pop());
+    }
+    for (let q = 0; q < SPC; q++) slotOwn[c * SPC + q] = -1;
+    for (let k = 0; k < cols; k++) byCol[k].forEach((i, r) => { sslot[i] = r * cols + k; if (r * cols + k < SPC) slotOwn[c * SPC + r * cols + k] = i; });
+  }
+}
+function moraleAll(sd, d){ for (let i = 0; i < M; i++) if (sside[i] === sd && st[i] < DEAD) mor[i] -= d; }
+// 1人に同時にかかれるのは、正面から2人まで。横が空いていれば、その側から1人ずつ増える
+function maxAtk(j){ const cv = cov[j]; return st[j] === ROUT ? 4 : 2 + ((cv & 1) ? 0 : 1) + ((cv & 2) ? 0 : 1); }
+function unlock(i){ const t = lock[i]; if (t >= 0){ if (atkOn[t] > 0) atkOn[t]--; lock[i] = -1; } }
+const crowOf = i => role[i] ? 99 : (sslot[i] / ccols[scomp[i]]) | 0;
+// 傷を負わせる:深手なら倒れる(討死か、動けない負傷)。浅手でも、ある程度傷つけば後ろへ下がる
+function harm(j, dmg, routing){
+  if (st[j] >= DEAD) return;
+  hp[j] -= dmg; hitT[j] = tick;
+  if (hp[j] <= 0){ if (rnd() < (routing ? 0.7 : 0.35)) kill(j, false); else wound(j); }
+  else if (hp[j] < 3 && rnd() < 0.25) wound(j);
+}
+function ripple(j, amp){
+  const sd = sside[j], x = sx[j], y = sy[j], hx = x / CS | 0, hy = y / CS | 0;
+  for (let yy = hy - 4; yy <= hy + 4; yy++){ if (yy < 0 || yy >= HH) continue;
+    for (let xx = hx - 4; xx <= hx + 4; xx++){ if (xx < 0 || xx >= HW) continue;
+      for (let k = head[yy * HW + xx]; k >= 0; k = nxt[k]){ if (st[k] >= DEAD || sside[k] !== sd) continue;
+        const d = hyp(sx[k] - x, sy[k] - y); if (d < 8) mor[k] -= amp * (1 - d / 8); } } }
+}
+function roleLoss(j){
+  const sd = sside[j], c = scomp[j], bt = bats[cbat[c]];
+  if (role[j] === 1 || role[j] === 2 || role[j] === 4){
+    cleaderless[c] = 200;
+    for (let k = 0; k < mcount[c]; k++) mor[members[c * SPC + k]] -= 0.15;
+    if (role[j] >= 2) for (const c2 of bt.comps) for (let k = 0; k < mcount[c2]; k++) mor[members[c2 * SPC + k]] -= 0.08;
+  }
+  if (role[j] === 3){                          // 旗が倒れた
+    cflagDown[c] = 60;
+    for (let k = 0; k < mcount[c]; k++) mor[members[c * SPC + k]] -= 0.08;
+    if (c === bt.flagComp){ for (const c2 of bt.comps) for (let k = 0; k < mcount[c2]; k++) mor[members[c2 * SPC + k]] -= 0.05; events.push("flag", bt.id); }
+    if (bt.role === "guard" && c === bt.flagComp){ moraleAll(sd, 0.06); events.push("umajirushi", sd); }
+  }
+}
+function kill(j, flee){
+  unlock(j);
+  st[j] = flee ? FLED : DEAD; const sd = sside[j];
+  if (flee){ lost[sd][1]++; return; }
+  lost[sd][0]++; deaths.push(sx[j], sy[j], sd);
+  ripple(j, 0.055); roleLoss(j);
+}
+function wound(j){
+  if (st[j] !== FORM && st[j] !== ROUT) return;
+  unlock(j); st[j] = WOUND; wT[j] = 0; lost[sside[j]][2]++;
+  ripple(j, 0.04); roleLoss(j);
+}
+// 負傷者:ゆっくり後ろへ下がり、しばらくすると手当てを受ける(戦場から消える)
+function moveWounded(i){
+  const ax = sside[i] === 0 ? -1 : 1, nx = sx[i] + ax * 0.06, ny = sy[i] + (rnd() - 0.5) * 0.04;
+  if (!(mapWater && terAt(nx, ny) === RIVER)){ sx[i] = nx; sy[i] = ny; }
+  if (++wT[i] > 900 || nx < 0 || nx >= W) st[i] = CARED;
+}
+function promote(){
+  for (let c = 0; c < C; c++){
+    if (cleaderless[c] > 0 && --cleaderless[c] === 0){
+      const old = cleader[c]; let nl = -1;
+      for (let k = mcount[c] - 1; k >= 0; k--){ const i = members[c * SPC + k]; if (st[i] === FORM){ nl = i; break; } }
+      if (nl < 0){ cleaderless[c] = 100; continue; }
+      role[nl] = role[old] === 4 ? 2 : Math.max(1, role[old]); role[old] = 0; cleader[c] = nl; mor[nl] = Math.max(mor[nl], 0.85);
+      const bt = bats[cbat[c]]; if (bt.leader === old) bt.leader = nl;
+      let w = 0; for (let k = 0; k < mcount[c]; k++){ const i = members[c * SPC + k]; if (i !== nl) members[c * SPC + w++] = i; } mcount[c] = w;
+    }
+    if (cflagDown[c] > 0 && --cflagDown[c] === 0){       // 別の兵が旗を拾う
+      let nf = -1; for (let k = mcount[c] - 1; k >= 0; k--){ const i = members[c * SPC + k]; if (st[i] === FORM){ nf = i; break; } }
+      if (nf < 0){ cflagDown[c] = 100; continue; }
+      role[nf] = 3; cflag[c] = nf;
+      let w = 0; for (let k = 0; k < mcount[c]; k++){ const i = members[c * SPC + k]; if (i !== nf) members[c * SPC + w++] = i; } mcount[c] = w;
+    }
+  }
+}
+// 矢:放物線で飛び、落ちたところにいる兵に当たる(盾で防ぐこともある)
+// 何回崩れたら見限って戻らなくなるか(度胸のある兵ほど何度でも戻る)
+const desertAt = i => role[i] ? 99 : 1 + Math.round(brave[i] * 3);
+// 逃げた兵が集まる旗を探す(自分の中隊の旗を優先、なければ近くの味方の旗)
+function enemyNear(x, y, sd, r){                   // 粗い区画で調べる(だいたいの距離でよい)
+  const g = coarse[1 - sd], gx = x / CG | 0, gy = y / CG | 0, n = Math.max(1, Math.round(r / CG));
+  for (let yy = gy - n; yy <= gy + n; yy++){ if (yy < 0 || yy >= GH2) continue;
+    for (let xx = gx - n; xx <= gx + n; xx++){ if (xx < 0 || xx >= GW2) continue; if (g[yy * GW2 + xx]) return true; } }
+  return false;
+}
+function findRally(i, x, y, sd, c){
+  if (broke[i] >= desertAt(i)) return -1;
+  if (flagOK(c) && !cengaged[c]){ const f = cflag[c]; if (hyp(sx[f] - x, sy[f] - y) < 250) return c; }
+  if (role[i]) return -1;
+  let best = -1, bd = 220 * 220;
+  for (const rc of rallyList[sd]){ if (mcount[rc] >= SPC - 3) continue; const f = cflag[rc], d2 = (sx[f] - x) ** 2 + (sy[f] - y) ** 2; if (d2 < bd){ bd = d2; best = rc; } }
+  return best;
+}
+function landArrow(a){
+  const hx = a.x1 / CS | 0, hy = a.y1 / CS | 0; let best = -1, bd = 0.36;
+  for (let yy = hy - 1; yy <= hy + 1; yy++){ if (yy < 0 || yy >= HH) continue;
+    for (let xx = hx - 1; xx <= hx + 1; xx++){ if (xx < 0 || xx >= HW) continue;
+      for (let j = head[yy * HW + xx]; j >= 0; j = nxt[j]){ if (st[j] >= DEAD) continue;
+        const d2 = (sx[j] - a.x1) ** 2 + (sy[j] - a.y1) ** 2;
+        if (d2 < 4 && sside[j] !== a.sd) mor[j] -= 0.0015;           // すぐそばに落ちる矢も怖い
+        if (d2 < bd){ bd = d2; best = j; } } } }
+  a.hit = 0;
+  if (best < 0) return;
+  const j = best, b = bats[cbat[scomp[j]]], fx = Math.cos(b.a), fy = Math.sin(b.a), ax = a.x0 - sx[j], ay = a.y0 - sy[j], al = hyp(ax, ay) || 1, dot = (fx * ax + fy * ay) / al;
+  const block = Math.min(0.9, (st[j] !== FORM ? 0.1 : ctype[scomp[j]] === INF ? (dot > 0.3 ? 0.65 : 0.25) : (dot > 0.3 ? 0.35 : 0.15)) + (terAt(sx[j], sy[j]) === FOREST ? 0.35 : 0));
+  if (rnd() < block){ a.hit = 1; return; }                       // 盾や鎧で止まった
+  mor[j] -= 0.015; a.hit = 2;
+  harm(j, (0.6 + rnd() * 1.8) * ARMF[carm[scomp[j]]], false); if (st[j] === DEAD) arrowKills[sside[j]]++;
+}
+
+// ───── 1刻み ─────
+// まわりを見る(見回り)。結果は兵ごとの入れ物と、下の受け渡し用の変数に置く
+let S_best = -1, S_bd = 1e9, S_nf = 0, S_nr = 0, S_er = 0, S_px = 0, S_py = 0;
+function scanNear(i, s, x, y, sd, c, hx, hy, qfx, qfy, reach2, cavI, every){
+  let best = -1, bd = 1e9, nf = 0, nr = 0, er = 0, px = 0, py = 0;
+      nf = 0; let seen = 0, ft = -1, fd = 1e9, cv = 0, press = -1, pressN = 1, bk = 0, bh = 0, en = 0, xb = 0, rh = 0; const myB = cbat[c]; const boost = every === 1 ? 1 : 1 + (every - 1) * 0.35;
+      for (let yy = hy - 1; yy <= hy + 1; yy++){ if (yy < 0 || yy >= HH) continue;
+        const row = yy * HW;
+        for (let xx = hx - 1; xx <= hx + 1; xx++){ if (xx < 0 || xx >= HW) continue;
+          let seenC = 0;                                   // 上限はマスごと(前は全体で数えていて、右側のマスを見落とし、青が不利になっていた)
+          for (let j = head[row + xx]; j >= 0; j = nxt[j]){
+            if (j === i) continue;
+            const sj = st[j]; if (sj >= DEAD) continue;
+            if (++seenC > 8) break;                       // 押し合いで混んでいても、近くの18人まで見れば足りる
+            const ddx = sx[j] - x, ddy = sy[j] - y, d2 = ddx * ddx + ddy * ddy;
+            if (d2 > 14.5) continue;                         // 3.8mより遠い者は、何にも使わない(長い武器が届く最大の距離)
+            const friend = sside[j] === sd, other = friend && cbat[scomp[j]] !== myB;   // 味方の、別の部隊の兵
+            if (friend){
+              if (d2 < 6.25){ nf++; if (sj === ROUT) nr++;
+                // 横に味方がいるか(左右を預け合う)
+                const fw = ddx * qfx + ddy * qfy, lt = -ddx * qfy + ddy * qfx;
+                if (fw > -1.2 && fw < 1.2 && lt > 0.4 && lt < 2.4) cv |= 2; else if (fw > -1.2 && fw < 1.2 && lt < -0.4 && lt > -2.4) cv |= 1;
+                if (fw > 0.3 && fw < 1.7 && lt > -0.7 && lt < 0.7) bk = 1;                 // 前に味方が立ちふさがっている
+                else if (fw < -0.3 && fw > -1.5 && lt > -0.7 && lt < 0.7) bh = 1;          // 真後ろに味方がいる(押されている)
+                // 2人以上に攻められている味方(助太刀の相手)
+                if (atkOn[j] >= 2 && atkOn[j] > pressN){ pressN = atkOn[j]; press = j; } }
+            } else {
+              if (d2 < bd){ bd = d2; best = j; } if (sj === ROUT && d2 < 9) er++; if (d2 < 4 && sj === FORM) en++;
+              // 自分の向きの正面(約±65度)で届く敵。すでに手いっぱいの敵は選ばない
+              if (d2 < reach2 * 1.7 && d2 < fd){ const d = Math.sqrt(d2) || 0.01, dot = (ddx * qfx + ddy * qfy) / d;
+                if (dot > 0.42 && (lock[i] === j || atkOn[j] < maxAtk(j))){ fd = d2; ft = j; } }
+            }
+            if (other && d2 < 1.0){ xb++; if (sj === ROUT && s === FORM) rh++; }
+            const rr = cavI & scav[j] ? 1.21 : cavI | scav[j] ? 1.44 : other ? 0.81 : 0.5;
+            if (d2 < rr && d2 > 1e-6){ const d = Math.sqrt(d2), p = ((cavI & scav[j] ? 1.1 : cavI | scav[j] ? 1.2 : other ? 0.9 : 0.7071) - d) * 0.3 * boost * (s === ROUT && other && sj === FORM ? 2 : 1); px -= ddx / d * p; py -= ddy / d * p; if (cavI && (sside[j] !== sd || (other && !scav[j]))) rspd[i] *= 0.95; }   // 逃げる兵は、しっかりした味方の隊に押し返される   // 人や馬に当たると馬の足が鈍る
+          } } }
+      xbB[i] = xb; rhB[i] = rh; if (xb) cXb[c]++; if (rh) cRh[c] += rh;
+      tgtB[i] = best; nrB[i] = nr; erB[i] = er; tgtF[i] = ft; cov[i] = cv; assistB[i] = press; blk[i] = bk; eNear[i] = en; bhd[i] = bh;
+      S_best = best; S_bd = bd; S_nf = nf; S_nr = nr; S_er = er; S_px = px; S_py = py;
+}
+
+// 逃げる兵の1刻み(動きの向き mx・my と、士気の増減 dm を受け渡し用の変数に置く)
+let S_mx = 0, S_my = 0, S_dm = 0;
+function routBranch(i, x, y, sd, c, ty0, best, bd, nr){
+  let mx = 0, my = 0, dm = 0;
+      fighting[i] = 0; if (lock[i] >= 0) unlock(i);
+      if (((tick + i) % 10) === 0){ rallyC[i] = findRally(i, x, y, sd, c); thr[i] = enemyNear(x, y, sd, 20) ? 1 : 0; safeF[i] = enemyNear(x, y, sd, 70) ? 0 : 1; }
+      const threat = best >= 0 || thr[i];
+      const rc = rallyC[i];
+      if (!threat && rc >= 0 && mor[i] > 0.3 && cFOK[rc]){
+        const fl = cflag[rc], dxf = sx[fl] - x, dyf = sy[fl] - y, dd = hyp(dxf, dyf) || 1;
+        if (dd > 4){ const v = Math.min(0.17, dd); mx = dxf / dd * v; my = dyf / dd * v; }
+        dm = 0.0025;
+        if (broke[i] >= desertAt(i)) rallyC[i] = -1;        // もう戻らない
+        else if (dd < 8 && mor[i] > 0.4 + 0.1 * broke[i]){    // 旗のもとに着いた:隊に加わる
+          if (rc !== c && !role[i] && mcount[rc] < SPC - 3){ scomp[i] = rc; members[rc * SPC + mcount[rc]] = i; sslot[i] = mcount[rc]; mcount[rc]++; }
+          if (rc === c || scomp[i] === rc){ st[i] = FORM; rallied[sd]++; }
+        }
+      } else if (threat || mor[i] < 0.18 || broke[i] >= desertAt(i)){   // 追われている/見限った兵は走って逃げる
+        let ax = sd === 0 ? -1 : 1, ay = 0;
+        if (best >= 0){ const d = Math.sqrt(bd) || 1; ax += (x - sx[best]) / d * 1.5; ay += (y - sy[best]) / d * 1.5; }
+        // 全力で走れるのは息が続く間だけ:疲れるほど小走り、歩きになる。追われていなければ走らない
+        const chased = threat, base = ty0 === CAV ? 0.6 : 0.3, vr = chased ? base * Math.max(0.3, 1 - 0.7 * fat[i]) : base * 0.35;
+        if (chased){ fat[i] = Math.min(1, fat[i] + 0.0016 * ARMT[carm[c]]); if (fat[i] > 0.5 && !dropped[i] && !role[i] && rnd() < 0.004) dropped[i] = 1; }   // 速く逃げるために武器や盾を捨てる
+        const al = hyp(ax, ay) || 1; mx = ax / al * vr + (rnd() - 0.5) * 0.05; my = ay / al * vr + (rnd() - 0.5) * 0.05;
+        dm = best >= 0 ? 0 : 0.0008;
+      } else {                                              // 追われていない:安全な所までは歩いて離れ、着いたら立ち止まって固まる
+        const ax = sd === 0 ? -1 : 1, v0 = safeF[i] ? 0.01 : 0.09; mx = ax * v0 + (rnd() - 0.5) * 0.04; my = (rnd() - 0.5) * 0.04;
+        dm = 0.0018;
+        if ((nr < 2 || mor[i] > 0.68 + 0.08 * broke[i]) && mor[i] > (role[i] ? 0.4 : 0.5 + 0.12 * broke[i] - 0.15 * (brave[i] - 0.5)) && ((tick + i) % 10) === 0){ st[i] = FORM; rallied[sd]++; }
+      }
+      if (!threat) fat[i] = Math.max(0, fat[i] - 0.0008);
+      if (!threat) dm += Math.max(0, AM[sd] - 0.6) * 0.003;         // 勝っている軍の逃げた兵は、早く戻ってくる
+      S_mx = mx; S_my = my; S_dm = dm;
+}
+// 並んでいる兵の1刻み(最小の戦い・立つ場所・士気)。この兵の計算をここで終えるときは 1 を返す
+function formBranch(i, x, y, sd, c, ty0, hx, hy, fx, fy, qfx, qfy, wep, reachI, reach2, cavI, best, bd, nf, nr, er){
+  let mx = 0, my = 0, dm = 0;
+
+      const kT = Math.min(6, Math.max(1, tick - lastU[i])); lastU[i] = tick;   // 眠っていた刻みの分も、士気と疲れを進める
+      // ── 最小の戦い:状態(構え・打ち込み・退き・助太刀)を0.5〜1秒ごとに決める ──
+      const ft = tgtF[i];
+      if ((dec[i] -= kT) <= 0){
+        dec[i] = 5 + (rnd() * 6 | 0);
+        let tgt = -1, stc = GUARD;
+        if (fat[i] > 0.78 || (stance[i] === REST && fat[i] > 0.42) || (hp[i] < 3.5 && rnd() < 0.25)) stc = REST;      // 息が上がった:一歩下がる
+        else if (ft >= 0){
+          tgt = ft;
+          // 打ち込むかどうか:度胸・疲れ・士気、相手の疲れ、味方が先に相手を引きつけているか
+          const a = 0.25 + 0.45 * brave[i] - 0.45 * fat[i] + 0.3 * (mor[i] - 0.5) + 0.5 * (fat[ft] - fat[i]) + (atkOn[ft] >= 1 && lock[i] !== ft ? 0.2 : 0) + (cEbb[c] ? -0.3 : 0);
+          stc = rnd() < a ? ATTACK : GUARD;
+        } else if (assistB[i] >= 0 && !role[i] && (crowOf(i) <= 1)){
+          // 助太刀:2人以上に攻められている隣の味方の相手を引き受ける
+          const f2 = assistB[i]; let e2 = -1, ed = 9;
+          const tb = tgtB[i]; if (tb >= 0 && st[tb] < DEAD){ const d2 = (sx[tb] - sx[f2]) ** 2 + (sy[tb] - sy[f2]) ** 2; if (d2 < ed && atkOn[tb] < maxAtk(tb)){ e2 = tb; } }
+          if (e2 >= 0){ tgt = e2; stc = ASSIST; }
+        } else if (best >= 0 && bd < reach2 && (cov[i] !== 3 || nf < 2) && !role[i]){
+          // 横が空いていて敵が来た:向き直って相手をする
+          if (atkOn[best] < maxAtk(best)){ tgt = best; stc = GUARD; }
+        }
+        if (stc === REST){ tgt = -1;
+          const cols = ccols[c], q = sslot[i];
+          if (!role[i] && q < cols * 2 && stance[i] !== REST){ const k2 = slotOwn[c * SPC + q + cols];
+            if (k2 >= 0 && st[k2] === FORM && scomp[k2] === c && fat[k2] < 0.4 && sslot[k2] === q + cols){
+              sslot[k2] = q; sslot[i] = q + cols; slotOwn[c * SPC + q] = k2; slotOwn[c * SPC + q + cols] = i; swaps++; } } }
+        if (tgt !== lock[i]){ if (lock[i] >= 0) unlock(i); if (tgt >= 0 && atkOn[tgt] < maxAtk(tgt)){ lock[i] = tgt; atkOn[tgt]++; } else if (stc !== REST) stc = GUARD; }   // 相手が手いっぱいなら、後ろで構えて待つ
+        stance[i] = stc;
+      }
+      let tg = lock[i];
+      if (tg >= 0 && (st[tg] >= DEAD || st[tg] === WOUND)){ unlock(i); tg = -1; }
+      const st0 = stance[i];
+      let tdx = 0, tdy = 0, td = 1e9;
+      if (tg >= 0){ tdx = sx[tg] - x; tdy = sy[tg] - y; td = Math.sqrt(tdx * tdx + tdy * tdy); if (td > reachI * 2.2){ unlock(i); tg = -1; td = 1e9; } }
+      fighting[i] = tg >= 0 && td < reachI + 0.3 ? 1 : 0;
+      if (!cavI && (tg >= 0 || (best >= 0 && bd < 9) || qfx * fx + qfy * fy < 0.995)){ let wx = fx, wy = fy;
+        if (tg >= 0){ wx = tdx / (td || 1); wy = tdy / (td || 1); }
+        else if (best >= 0 && bd < 9){ const d = Math.sqrt(bd) || 1; wx = (sx[best] - x) / d; wy = (sy[best] - y) / d; }
+        let nx2 = qfx + (wx - qfx) * 0.22 * kT, ny2 = qfy + (wy - qfy) * 0.22 * kT; const nl = Math.sqrt(nx2 * nx2 + ny2 * ny2) || 1; pfx[i] = nx2 / nl; pfy[i] = ny2 / nl; }
+      // 騎兵の突撃:勢いのままぶつかる。槍を揃えた密集の正面には跳ね返される
+      if (cavI && !imp[i] && rspd[i] > 0.42 && best >= 0 && bd < 4.4 && terAt(x, y) !== FOREST && terAt(x, y) !== MARSH){
+        const ex3 = sx[best] - x, ey3 = sy[best] - y, el3 = Math.sqrt(bd) || 1;
+        if ((ex3 * pfx[i] + ey3 * pfy[i]) / el3 > 0.5){               // 馬の行く手にいる相手
+          imp[i] = 1; const tc = scomp[best], dot = -(pfx[best] * ex3 + pfy[best] * ey3) / el3;   // 相手から見た騎兵の来る向き
+          const wall = ctype[tc] === INF && st[best] === FORM && dot > 0.3 && nearF[best] >= 4 && mor[best] > 0.45 && (cwep[tc] === 1 || cOrd[tc] > 0.75);
+          if (wall){ rspd[i] *= 0.25; if (cwep[tc] === 1) harm(i, 1 + rspd[i] * 6, false); mor[i] -= 0.03; if (st[i] >= DEAD) return 1; if ((tick & 7) === 0) events.push("pike", i);
+            const sgn = (pfx[i] * ey3 - pfy[i] * ex3) > 0 ? -1 : 1, cs = Math.cos(0.6 * sgn), sn = Math.sin(0.6 * sgn), nx3 = pfx[i] * cs - pfy[i] * sn, ny3 = pfx[i] * sn + pfy[i] * cs; pfx[i] = nx3; pfy[i] = ny3; }   // 馬がそれる
+          else { const sp0 = rspd[i]; harm(best, (0.8 + 3.4 * sp0) * ARMF[carm[tc]], false);
+            if (st[best] === FORM) mor[best] -= (dot < 0.3 ? 0.05 : 0.025) + 0.05 * sp0;
+            if (st[best] < DEAD){ sx[best] += ex3 / el3 * 0.7 * sp0; sy[best] += ey3 / el3 * 0.7 * sp0; }   // 馬に押し倒される
+            rspd[i] *= 0.6; if ((tick & 3) === 0) events.push("impact", best); }
+        }
+      }
+      // 打ち込み:届く相手にだけ。疲れているほど間があく
+      if (fighting[i] && (st0 === ATTACK || st0 === ASSIST) && (cdA[i] -= kT) <= 0){
+        cdA[i] = ((12 + rnd() * 10) * (1 + fat[i])) | 0;
+        fat[i] = Math.min(1, fat[i] + 0.012 * ARMT[carm[c]]);
+        const tc = scomp[tg], dot = -(pfx[tg] * tdx + pfy[tg] * tdy) / (td || 1);   // 相手の兵が向いている方から見た、こちらの位置(背中や横は弱い)
+        let p = 0.095 * (1 - 0.5 * fat[i]) * (0.8 + 0.4 * brave[i]) * (dropped[i] ? 0.45 : 1);
+        if (stance[tg] === GUARD && dot > 0.4) p *= 0.6;                  // 構えた相手の正面は受けられやすい
+        if (dot < 0.3) p *= dot < -0.3 ? 1.5 : 1.25;                      // 横・後ろからは決まりやすい
+        if (cov[tg] === 3 && dot > 0.3) p *= 0.8;                         // 左右を味方に守られた相手
+        if (atkOn[tg] >= 2) p *= 1.25;                                    // 2人がかり:片方が引きつけている
+        if (cshd[tc] && !dropped[tg] && dot > 0.3) p *= 0.75;                             // 盾の正面
+        if (!wep && nf >= 7) p *= 0.6;                                    // 混みすぎて刀を振れない(槍は突ける)
+        p *= 1 + 0.6 * fat[tg];                                           // 疲れた相手は隙ができる
+        if (st[tg] === ROUT) p *= 2;
+        { const ta = terAt(x, y), tdT = terAt(sx[tg], sy[tg]), sl = (hAt(sx[tg], sy[tg]) - hAt(x, y)) / Math.max(0.8, td);
+          let tf = Math.max(0.6, Math.min(1.5, 1 - 1.5 * sl));
+          if (ta === FORD || ta === MARSH) tf *= 0.75; if (tdT === FORD || tdT === MARSH) tf *= 1.25; if (ty0 === CAV && ta === FOREST) tf *= 0.6;
+          p *= tf; }
+        if (rnd() < p){
+          const dmg = (wep ? 1 + rnd() * 2.6 : 0.9 + rnd() * 3) * ARMF[carm[tc]] * (st[tg] === ROUT ? 1.5 : 1);
+          if (st[tg] === FORM) mor[tg] -= dot < -0.3 ? 0.032 : dot < 0.3 ? 0.014 : 0.006;
+          fat[tg] = Math.min(1, fat[tg] + 0.02);
+          harm(tg, dmg, st[tg] === ROUT);
+        } else fat[tg] = Math.min(1, fat[tg] + 0.006);                   // 受けるのも疲れる
+      }
+      // 疲れ:戦えば溜まり、休めば戻る(重い防具ほど溜まりやすい)
+      if (fighting[i]) fat[i] = Math.min(1, fat[i] + (st0 === ATTACK ? 0.0011 : 0.0006) * ARMT[carm[c]] * kT);
+      else fat[i] = Math.max(0, fat[i] - (st0 === REST ? 0.0012 : 0.0006) * kT);
+      // 立つ場所:持ち場が基本。打ち込むときは寄り、構えは間合いを保ち、息が上がれば下がる。持ち場から離れすぎない
+      let fwd, lat; const cols = ccols[c], rows = SPC / cols;
+      if (role[i]){ fwd = -((rows - 1) * csy[c] + 2.5); lat = role[i] === 3 ? 0.9 : -0.9; } else { const q = sslot[i]; fwd = -((q / cols) | 0) * (cfight[c] > 3 ? Math.min(csy[c], wep ? 1.0 : 1.15) : csy[c]); lat = (q % cols - (cols - 1) / 2) * csx[c]; }
+      const rowI = role[i] ? 99 : (sslot[i] / cols) | 0;
+      if (rowI <= 1 && cEbb[c]) fwd -= 2.5;                     // 中隊が息を整える:前の列が数m下がって間合いを取る
+      if (st0 === REST && !bhd[i]) fwd -= 2.2;
+      if (rowI === 0 && cengaged[c] && st0 === ATTACK) fwd += 0.3 + 0.7 * brave[i];   // 度胸のある兵は一歩前に出て押す
+      const dis = 1 - cOrd[c];
+      if (!role[i]){ fwd += jy[i] * dis * 1.8; lat += jx[i] * dis * 2.2; }
+      let tx = cpx[c] + fx * fwd - fy * lat, ty = cpy[c] + fy * fwd + fx * lat;
+      const L = (st0 === ASSIST ? 3 : cLOK[c] ? 2 : 3.5) + dis * 4;
+      // 手の空いた兵:前がふさがっていなければ、近くの敵へ寄る(穴に入り込む・端で回り込む)
+      if (tg < 0 && st0 !== REST && !role[i] && cfight[c] > 0 && !blk[i] && ty0 !== ARCH && (sslot[i] < ccols[c] * 4 || dis > 0.3)){   // 戦っている中隊の、前寄りの兵か乱れた隊の兵だけ
+        let eb = tgtE[i];
+        if (eb >= 0 && (st[eb] >= DEAD || (sx[eb] - x) ** 2 + (sy[eb] - y) ** 2 > 49)) eb = -1;
+        if (eb < 0 && ((tick + i) % 10) === 0){ let ed = 36;
+          for (let yy = hy - 2; yy <= hy + 2; yy++){ if (yy < 0 || yy >= HH) continue;
+            for (let xx = hx - 2; xx <= hx + 2; xx++){ if (xx < 0 || xx >= HW) continue;
+              for (let j = head[yy * HW + xx]; j >= 0; j = nxt[j]){ if (st[j] !== FORM && st[j] !== ROUT || sside[j] === sd) continue;
+                const d2 = (sx[j] - x) ** 2 + (sy[j] - y) ** 2; if (d2 < ed){ ed = d2; eb = j; } } } } }
+        tgtE[i] = eb;
+        if (eb >= 0){ const ex2 = sx[eb] - x, ey2 = sy[eb] - y, el = Math.sqrt(ex2 * ex2 + ey2 * ey2) || 1, want = reachI * 0.9;
+          let gx2 = x + ex2 / el * Math.max(0, el - want), gy2 = y + ey2 / el * Math.max(0, el - want);
+          const ox = gx2 - tx, oy = gy2 - ty, ol = Math.sqrt(ox * ox + oy * oy); if (ol > L){ gx2 = tx + ox / ol * L; gy2 = ty + oy / ol * L; }
+          tx = gx2; ty = gy2; }
+      }
+      if (tg >= 0 && st0 !== REST){
+        // 間合い:打ち込みは届くところまで寄る。構えは届くぎりぎりで待つ
+        const want = st0 === ATTACK || st0 === ASSIST ? reachI * 0.75 : reachI * 0.95;
+        if (td > want){ const k2 = (td - want) / td; tx = x + tdx * k2; ty = y + tdy * k2; }
+        else if (td < want * 0.6){ tx = x - tdx * 0.3; ty = y - tdy * 0.3; }
+        else { tx = x; ty = y; }
+        // 持ち場から離れすぎない(長がいれば2.5m、いなければ4m。助太刀は3m)
+        const lx = cpx[c] + fx * fwd - fy * lat, ly = cpy[c] + fy * fwd + fx * lat, ox = tx - lx, oy = ty - ly, ol = Math.sqrt(ox * ox + oy * oy);
+        if (ol > L){ tx = lx + ox / ol * L; ty = ly + oy / ol * L; }
+      }
+      if (fighting[i] && eNear[i] > nf + 1 && tg >= 0 && !bhd[i]){ tx -= tdx / (td || 1) * 0.8; ty -= tdy / (td || 1) * 0.8; }
+      const runNow = cRunF[c];
+      const vmax = (ty0 === CAV ? (runNow ? 0.78 : 0.4) : (runNow ? 0.26 : fighting[i] ? 0.08 : 0.17)) * (xbB[i] ? 0.45 : 1);   // 別の隊の兵とぶつかっていると、押し合って進めない
+      { const rx = tx - cpx[c], ry = ty - cpy[c]; ofw[i] = rx * fx + ry * fy; olt[i] = -rx * fy + ry * fx; ovm[i] = vmax; oOK[i] = role[i] ? 0 : 1; }   // 考えない刻みのために、立つ場所を中隊から見た形で覚えておく
+      const ex = tx - x, ey = ty - y, dd = Math.sqrt(ex * ex + ey * ey);
+      if (!cavI){ if (dd > 0.05){ const v = Math.min(vmax, dd); mx = ex / dd * v; my = ey / dd * v; } }
+      else {
+        // 着く前に速さを落とす(止まるのに要る距離 = 速さ²÷(2×減速))
+        let want = Math.min(cGait[c], Math.sqrt(2 * 0.04 * Math.max(0, dd - 0.6)));
+        if (fighting[i]) want = Math.min(want, 0.12);
+        // 落ち着いた槍ぶすまが前にあれば、手前で手綱を引く
+        const wo = cWall[c]; if (wo >= 0){ const dw = hyp(cpx[wo] - x, cpy[wo] - y); if (dw < 9) want = Math.min(want, 0.12); }
+        let dx = qfx, dy = qfy; if (dd > 1.0){ dx = ex / dd; dy = ey / dd; } else want = 0;   // 持ち場のすぐそばなら止まって待つ(落ち着いて眠れるように)
+        if (tg >= 0 && rspd[i] < 0.2){ dx = tdx / (td || 1); dy = tdy / (td || 1); }          // 止まって斬り合うときは相手の方へ
+        const cr = qfx * dy - qfy * dx, dt2 = qfx * dx + qfy * dy, ang = dt2 > 0.95 ? cr : Math.atan2(cr, dt2), sp = rspd[i];   // ほぼ正面なら、角度の計算を省く
+        const maxT = Math.min(0.12, 0.03 / Math.max(0.25, sp)), tn = Math.max(-maxT, Math.min(maxT, ang));
+        let hx2 = qfx, hy2 = qfy;
+        if (tn > 1e-4 || tn < -1e-4){ const cs = 1 - tn * tn * 0.5, sn = tn; hx2 = qfx * cs - qfy * sn; hy2 = qfx * sn + qfy * cs; const hl = Math.sqrt(hx2 * hx2 + hy2 * hy2); hx2 /= hl; hy2 /= hl; pfx[i] = hx2; pfy[i] = hy2; }
+        if (Math.abs(ang) > 1.2) want = Math.min(want, 0.22);                                // 大きく向きを変える間は速さを落とす
+        const ns = want > sp ? Math.min(want, sp + 0.025) : Math.max(want, sp - 0.045);       // 加速は約2.5m/秒²、減速は約4.5m/秒²
+        rspd[i] = ns; mx = hx2 * ns; my = hy2 * ns;
+        // 馬の疲れ:全力疾走はすぐ疲れ、並み足で戻る
+        if (ns > 0.75) fat[i] = Math.min(1, fat[i] + 0.0022); else if (ns > 0.5) fat[i] = Math.min(1, fat[i] + 0.0006); else if (!fighting[i]) fat[i] = Math.max(0, fat[i] - (ns < 0.2 ? 0.001 : 0.0004));
+        if (cImpReset[c] && ns < 0.3) imp[i] = 0;                                           // 離れて組み直したら、また一撃できる
+      }
+      // 弓を射る:1分に5〜6本ほど。落ちるまで2〜4秒
+      if (cArch[c] && quiver[i] > 0 && ctarget[c] >= 0 && !role[i] && !fighting[i] && (cdA[i] -= kT) <= 0){
+        cdA[i] = 95 + (rnd() * 40 | 0);
+        const tc = ctarget[c];
+        if (mcount[tc] > 0){
+          const j = members[tc * SPC + (rnd() * mcount[tc] | 0)];
+          if (st[j] < DEAD){
+            const d = hyp(sx[j] - x, sy[j] - y);
+            if (d < 185 + 4 * (hAt(x, y) - hAt(sx[j], sy[j])) && d > 15){
+              quiver[i]--;
+              const sc = 1.5 + d * 0.045, ga = rnd() * 6.283, gr = Math.sqrt(-2 * Math.log(rnd() + 1e-9)) * sc * 0.6;
+              const fl = Math.round(d / 4.5) + 4;
+              arrows.push({ x0: x, y0: y, x1: sx[j] + Math.cos(ga) * gr, y1: sy[j] + Math.sin(ga) * gr, t0: tick, t1: tick + fl, sd, hit: -1 });
+            }
+          }
+        }
+      }
+      // 士気:長い戦いに合わせて、斬り合いそのものの怖さは小さめ。孤立・横を突かれる・逃げる味方が効く
+      if (fighting[i]) dm -= 0.00015 + 0.0004 * fat[i];             // 疲れるほど、気持ちも削れていく
+      if (nf >= 4) dm += 0.0005; else if (nf <= 1 && (fighting[i] || cengaged[c])) dm -= 0.0012;
+      if (fighting[i] && cov[i] !== 3) dm -= 0.0003;               // 横ががら空き
+      dm -= 0.0028 * Math.min(3, nr) * (cengaged[c] ? 1 : 0.25);   // 逃げる味方の怖さは、敵が近いほど強くうつる dm += 0.002 * Math.min(3, er);
+      // 立ち直り:敵から離れていれば長と旗のもとでよく戻る。敵と向き合っている間は少ししか戻らない
+      if (!fighting[i]){ const k3 = cengaged[c] ? 0.25 : 1; if (cLOK[c]) dm += 0.0008 * k3; if (cFOK[c]) dm += 0.0004 * k3; }
+      // 中隊の仲間が減るほど、じわじわ怖くなる(討死と負傷で抜けた分)
+      if (cengaged[c]) dm -= 0.0022 * Math.max(0, 1 - calive[c] / 98);
+      if (csup[c]) dm += 0.0003;                                   // 後ろに味方の中隊が控えて支えている
+      dm += (AM[sd] - 0.6) * 0.0006;
+      if (rhB[i]) dm -= 0.006 * rhB[i];                            // 逃げてきた味方に突っ込まれると、恐怖がうつる                                // 軍全体の流れ:勝っている側は持ち直し、負けている側は折れやすい
+      if (crout[c] > calive[c] * 0.4) dm -= 0.002;
+      if (cBroken[c] && cengaged[c]) dm -= 0.004;
+      dm *= kT;
+      S_mx = mx; S_my = my; S_dm = dm; return 0;
+}
+
+// 兵ひとりの1刻み(大きな計算を小さく分けて、ブラウザが速い機械の言葉に変えたままにしやすくする)
+function soldierStep(i){
+  const s = st[i];
+    if (s === WOUND){ moveWounded(i); return; }
+    if (s >= DEAD) return;
+    if (s === FORM && mv[i] < 0.004 && cstill[scomp[i]] && lock[i] < 0 && tgtB[i] < 0 && (tick + i) % 5 !== 0) return;
+    if (s === FORM && cFar[scomp[i]] && !role[i] && lock[i] < 0 && mor[i] > 0.45){ farStep(i); return; }   // 怖がっている兵(崩れそうな兵)はふつうの計算で
+    if (s === FORM && oOK[i] && fighting[i] && lock[i] >= 0 && !scav[i] && ((tick + i) & 1) && st[lock[i]] < DEAD){ walkStep(i); return; }   // 斬り合いの最中も、0.2秒ごとに考えれば足りる
+    if (s === FORM && oOK[i] && lock[i] < 0 && !fighting[i] && !scav[i] && mor[i] > 0.45 && !xbB[i] && !rhB[i] && !bCross[cbat[scomp[i]]] && ((tick + i) & (tgtB[i] < 0 ? 3 : 1)) !== 0){ walkStep(i); return; }   // 別の部隊と入り込み合っている兵・逃げる味方とぶつかった兵は毎刻み考える   // 目の前に敵がいなければ4刻みに1回、近くにいても手が空いていれば2刻みに1回考える
+    if (s === ROUT && safeF[i] && !thr[i] && rallyC[i] < 0 && (tick + i) % 5 !== 0) return;   // 安全な所で立ち止まっている逃げた兵も眠らせる   // 持ち場で静かに立っている兵(近くに敵がいなければ眠らせる。後ろの列も)
+    const x = sx[i], y = sy[i], sd = sside[i], c = scomp[i], ty0 = ctype[c], hx = x / CS | 0, hy = y / CS | 0;
+    const fx = ccos[c], fy = csin[c], qfx = pfx[i], qfy = pfy[i], wep = cwep[c], reachI = wep ? REACH_LONG[ty0] : REACH_SHORT[ty0], reach2 = reachI * reachI;
+    let best = -1, bd = 1e9, nf = nearF[i], nr = 0, er = 0, px = 0, py = 0;
+    // まわりを見る:戦っている中隊の兵は3刻みに1回、それ以外は5刻みに1回(逃げる兵・駆ける兵はもっと多く)
+    const cavI = scav[i], fast = cavI && mv[i] > 0.3 && cengaged[c];   // 毎刻み見回るのは、敵の近くを駆ける騎兵だけ
+    const front2 = role[i] ? false : sslot[i] < ccols[c] * (cwep[c] ? 2 : 1) + 0;   // 前の列(槍なら2列目まで)
+    const every = fast ? 1 : (s === ROUT ? (thr[i] ? 2 : 5) : mv[i] > 0.2 ? (cengaged[c] ? 2 : 4) : cengaged[c] ? (front2 || lock[i] >= 0 ? 3 : 6) : 6);   // 後ろの列はたまに見るだけ
+    if (every === 1 || (tick + i) % every === 0){
+      scanNear(i, s, x, y, sd, c, hx, hy, qfx, qfy, reach2, cavI, every); best = S_best; bd = S_bd; nf = S_nf; nr = S_nr; er = S_er; px = S_px; py = S_py;
+    } else {
+      best = tgtB[i]; nr = nrB[i]; er = erB[i];
+      if (best >= 0){ if (st[best] >= DEAD) best = -1; else { const ddx = sx[best] - x, ddy = sy[best] - y; bd = ddx * ddx + ddy * ddy; if (bd > 9){ best = -1; bd = 1e9; } } }
+      if (tgtF[i] >= 0 && st[tgtF[i]] >= DEAD) tgtF[i] = -1;
+    }
+    nearF[i] = nf;
+    let mx = 0, my = 0, dm = 0;
+    if (s === ROUT){ routBranch(i, x, y, sd, c, ty0, best, bd, nr); }
+    else if (formBranch(i, x, y, sd, c, ty0, hx, hy, fx, fy, qfx, qfy, wep, reachI, reach2, cavI, best, bd, nf, nr, er)) return;
+    mx = S_mx; my = S_my; dm = S_dm;
+
+    {
+      let d = mor[i] - morP[i] + dm;
+      if (d < 0) d *= 1.5 - brave[i];                 // 度胸のある兵ほど、怖さに動じにくい
+      const cap = 1 - 0.12 * broke[i];                         // 一度崩れた兵は、元の自信まで戻らない
+      mor[i] = Math.max(0, Math.min(cap, morP[i] + d)); morP[i] = mor[i];
+    }
+    if (st[i] === FORM && role[i] !== 4 && mor[i] < (role[i] ? 0.1 : (0.08 + 0.34 * (1 - brave[i])) * (cLOK[c] && nf >= 4 && !cBroken[c] && crout[c] < calive[c] * 0.15 ? 0.6 : 1))){ st[i] = ROUT; if (broke[i] < 9) broke[i]++; if (lock[i] >= 0) unlock(i); }
+    if (role[i] === 4 && mor[i] < 0.2) mor[i] = 0.2;            // 総大将は逃げない
+    if ((mx || my) && !mapSimple){                   // 森・沼・浅瀬は遅く、道は速い。坂は登りが遅い
+      const tc0 = ((y / TC) | 0) * TW + ((x / TC) | 0), tf = TSPD[ty0][ter[tc0]] || 0.45;
+      const ax2 = Math.min(W - 1, Math.max(0, x + mx * 30)), ay2 = Math.min(H - 1, Math.max(0, y + my * 30)), mlen = Math.sqrt(mx * mx + my * my) * 30;
+      const sl = mlen > 0.1 ? (hgt[((ay2 / TC) | 0) * TW + ((ax2 / TC) | 0)] - hgt[tc0]) / mlen : 0;
+      const f = tf * (sl > 0 ? Math.max(0.45, 1 - 2.2 * sl) : Math.min(1.15, 1 - 0.6 * sl)); mx *= f; my *= f;
+    }
+    let nx = x + mx + px, ny = y + my + py;
+    if (mapWater && nx >= 0 && ny >= 0 && nx < W && ny < H && ter[((ny / TC) | 0) * TW + ((nx / TC) | 0)] === RIVER && terAt(x, y) !== RIVER){ if (terAt(nx, y) !== RIVER) ny = y; else if (terAt(x, ny) !== RIVER) nx = x; else { nx = x; ny = y; } }
+    if (st[i] === ROUT){ if (nx < 0 || nx >= W || ny < 0 || ny >= H){ kill(i, true); return; } }
+    else { nx = Math.max(0.5, Math.min(W - 0.5, nx)); ny = Math.max(0.5, Math.min(H - 0.5, ny)); }
+    const qx = nx - x, qy = ny - y; mv[i] = Math.sqrt(qx * qx + qy * qy); sx[i] = nx; sy[i] = ny;
+  }
+
+function step(){
+  if (over && tick - over.tick > 3000) return;      // 決着のあと5分(世界の時間)は、追撃と退却を見せる
+  // 再生:記録された命令を、記録と同じ刻みで出し直す
+  if (replayLog) while (replayAt < replayLog.length && replayLog[replayAt].t <= tick){ applyCmd(replayLog[replayAt]); replayAt++; }
+  tick++;
+  rebuildHash(); pathBudget = 3;
+  if (tick % 5 === 0) stats();
+  if (tick % 50 === 25) assess();
+  if (tick % 10 === 3) findCross();
+  if (tick % 30 === 7) stampOcc();
+  updateMsgs();
+  updateBatCmds();
+  for (const bt of bats) if ((tick + bt.id * 3) % 20 === 0) companyAI(bt);
+  if (tick % 50 === 1){ aiGeneral(1); if (watch) aiGeneral(0); }
+  for (const bt of bats) updateBat(bt);
+  updateComps();
+  if (tick % 25 === 0) compact();
+  promote();
+  for (let k = 0; k < arrows.length; k++){ const a = arrows[k]; if (a.t1 === tick) landArrow(a); }
+  if (tick % 20 === 0) arrows = arrows.filter(a => tick - a.t1 < 8);
+  const fwdOrder = (tick & 1) === 0;
+  for (let n = 0; n < M; n++) soldierStep(fwdOrder ? n : M - 1 - n);
+
+  if (tick % 10 === 0){
+    for (const sd of [0, 1]){
+      let bad = lost[sd][0] + lost[sd][1] + lost[sd][2]; for (const bt of bats) if (bt.side === sd) bad += bt.rout;
+      if (!over && (bad > 7000 || bats.filter(b => b.side === sd).every(b => b.broken || b.alive === 0))){ over = { loser: sd, tick, kind: "rout" }; if (!gens[sd].broken){ gens[sd].broken = true; gens[sd].retreatT = tick; } break; }
+    }
+  }
+}
+
+// 部隊の居場所を、道探しの地図に押す(中隊の広がりを円で近似)
+function stampOcc(){
+  navOcc.fill(0);
+  for (let c = 0; c < C; c++){
+    if (calive[c] - crout[c] < 20) continue;
+    const b = bats[cbat[c]], s0 = spacing(ctype[c], b.sp), cols = ccols[c], rows = SPC / cols;
+    const r = Math.max((cols - 1) * s0[0], (rows - 1) * s0[1]) / 2 + 4;
+    const fx = ccos[c], fy = csin[c], mx = cpx[c] - fx * (rows - 1) * s0[1] / 2, my = cpy[c] - fy * (rows - 1) * s0[1] / 2;   // 中隊の真ん中
+    const g0x = Math.max(0, (mx - r) / NG | 0), g1x = Math.min(NW - 1, (mx + r) / NG | 0), g0y = Math.max(0, (my - r) / NG | 0), g1y = Math.min(NH - 1, (my + r) / NG | 0);
+    for (let gy = g0y; gy <= g1y; gy++) for (let gx = g0x; gx <= g1x; gx++){
+      const cxw = gx * NG + 5, cyw = gy * NG + 5; if ((cxw - mx) ** 2 + (cyw - my) ** 2 > r * r) continue;
+      const gi = gy * NW + gx, o = navOcc[gi];
+      if (o === 0){ navOcc[gi] = b.id + 1; navOccSide[gi] = b.side; }
+      else if (o !== b.id + 1) navOcc[gi] = -1;   // 混ざっている
+    }
+  }
+}
+
+// ───── プレイヤーの命令(画面から出すものは必ずここを通し、記録する) ─────
+function applyCmd(c){
+  if (c.k === "order") return sendOrder(bats[c.bat], c.ord);
+  if (c.k === "smoke") return lightSmoke(c.sd, c.kind);
+  return false;
+}
+function cmd(c){
+  if (replayLog) return false;                       // 再生中は命令を出せない
+  const ok = applyCmd(c);
+  if (ok) orderLog.push(Object.assign({ t: tick }, JSON.parse(JSON.stringify(c))));
+  return ok;
+}
+let cmdOrder = (bt, ord) => cmd({ k: "order", bat: bt.id, ord });
+let cmdSmoke = (sd, kind) => cmd({ k: "smoke", sd, kind });
+// 合戦の様子を一つの数にまとめる(同じ合戦かどうかの確かめ用)
+function stateHash(){
+  let h = 2166136261 >>> 0;
+  const mix = v => { h ^= v; h = Math.imul(h, 16777619) >>> 0; };
+  for (let i = 0; i < M; i++){ mix(st[i]); mix(Math.round(sx[i] * 100)); mix(Math.round(sy[i] * 100)); mix(Math.round(hp[i] * 100)); }
+  mix(tick); mix(lost[0][0]); mix(lost[1][0]);
+  return h >>> 0;
+}
+
+// ───── 形勢判断:区画ごとの強さ・勢い・余力と、軍全体の士気 ─────
+// 強さ = 立っている兵 × 士気 × 元気さ。区画は戦場を横(北から南)に10に分けたもの
+function assess(){
+  const S0 = new Float32Array(SECT), S1 = new Float32Array(SECT), RV = [0, 0], TOT = [0, 0];
+  for (let c = 0; c < C; c++){
+    const n = calive[c] - crout[c]; if (n <= 0) continue;
+    const b = bats[cbat[c]], e = n * (0.3 + cmorA[c]) * (1 - 0.5 * cfatA[c]), k = Math.max(0, Math.min(SECT - 1, (cpy[c] / H * SECT) | 0));
+    (b.side ? S1 : S0)[k] += e; TOT[b.side] += e;
+    if (!cengaged[c] && !b.broken) RV[b.side] += e;          // まだ戦っていない余力
+  }
+  for (const sd of [0, 1]){
+    const g = gens[sd], mine = sd ? S1 : S0, theirs = sd ? S0 : S1;
+    for (let k = 0; k < SECT; k++){ const t = mine[k] + theirs[k]; g.bal[k] = t > 1 ? (mine[k] - theirs[k]) / t : 0; }
+    g.global = (TOT[sd] - TOT[1 - sd]) / Math.max(1, TOT[0] + TOT[1]); g.reserve = RV[sd] / Math.max(1, TOT[sd]);
+    g.hist.push(g.global); if (g.hist.length > 13) g.hist.shift();   // 約1分ぶん
+    g.trend = g.global - g.hist[0];
+  }
+  // 軍全体の士気:失った兵、崩れた部隊(中央ほど重い)、総大将と馬印、形勢の流れ、敵の崩れ
+  for (const sd of [0, 1]){
+    const g = gens[sd], size = M / 2;
+    let out = lost[sd][0] + lost[sd][1] + lost[sd][2], brk = 0, ebrk = 0;
+    for (const b of bats){ if (b.side === sd){ out += b.rout; if (b.broken || b.alive === 0){ const center = b.role === "front" && Math.abs(b.y - 500) < 200; brk += center ? 0.09 : b.role === "front" || b.role === "res" ? 0.06 : 0.03; } }
+      else if (b.broken) ebrk += 0.035; }
+    let tgt = 1 - 1.3 * out / size - brk + Math.min(0.2, ebrk) + 0.6 * g.trend + 0.25 * g.global;
+    if (g.dead && !g.succ) tgt -= 0.25; else if (g.dead) tgt -= 0.1;
+    g.armyMor = Math.max(0, Math.min(1, 0.8 * g.armyMor + 0.2 * Math.max(0, Math.min(1, tgt)))); AM[sd] = g.armyMor;
+  }
+  // 軍の気持ちが折れたら総崩れ:全部隊が退き、兵は一気に怖じける。相手は勢いづく
+  for (const sd of [0, 1]){
+    const g = gens[sd];
+    if (!g.broken && !g.fixed && g.armyMor < 0.3){   // fixed:確かめ用(部隊を間引いた戦いで総崩れを起こさない)
+      g.broken = true; g.retreatT = tick; events.push("armybreak", sd);
+      for (const b of bats) if (b.side === sd && b.alive > 0){ const fx = Math.cos(b.a), fy = Math.sin(b.a); b.order = { type: "back", x: b.x - fx * 300, y: b.y - fy * 300 }; b.self = null; }
+      for (let i = 0; i < M; i++){ if (st[i] >= DEAD) continue; if (sside[i] === sd) mor[i] -= 0.18; else mor[i] = Math.min(1, mor[i] + 0.08); }
+      if (!over) over = { loser: sd, tick, kind: "army" };
+    }
+  }
+}
+
+// ───── 総大将のAI(赤、見守るときは青も)。命令は同じく伝令と狼煙で出す ─────
+function aiGeneral(sd){
+  if (!canCommand(sd)) return;
+  const G = gens[sd], mine = bats.filter(b => b.side === sd && !b.broken && b.alive > 0), foes = bats.filter(b => b.side !== sd && !b.broken && b.alive > 0);
+  if (!foes.length) return;
+  const issue = (bt, ord) => { const key = JSON.stringify(ord); if (G.issued[bt.id] === key) return; G.issued[bt.id] = key; sendOrder(bt, ord); };
+  const near = (bt, list) => { let b = null, bd = 1e9; for (const e of list){ const d = hyp(e.x - bt.x, e.y - bt.y); if (d < bd){ bd = d; b = e; } } return [b, bd]; };
+  const foeInf = foes.filter(f => f.type === INF && f.role !== "guard"), front = mine.filter(b => b.role === "front").sort((a, b) => a.y - b.y);
+  const pool = foeInf.length ? foeInf : foes;
+  let gap = 1e9; for (const b of front) gap = Math.min(gap, near(b, pool)[1]);
+  const t = tick - G.t0;
+  const E = gens[1 - sd];
+  // 決着がついたあと:勝った側は騎兵で追い、歩兵はその場で隊を整える。負けた側は退く
+  if (E.broken){ for (const b of mine){ if (b.type === CAV && b.role !== "horse"){ const r = foes.filter(f => f.rout > f.alive * 0.3); const [e] = near(b, r.length ? r : foes); if (e) issue(b, { type: "attack", bat: e.id, pace: 2 }); } else if (b.role !== "guard" && b.role !== "horse") issue(b, { type: "hold" }); } return; }
+  if (G.broken) return;
+  // 勝ち目がなければ退く(慎重な総大将ほど早い)
+  if (G.global < -0.3 && G.trend < 0 && G.armyMor < 0.35 + (G.timid || 0)){ lightSmoke(sd, "back"); }
+  if (G.plan === "wait" && gap < 260){ G.plan = "push"; lightSmoke(sd, "attack"); }
+  front.forEach((b, k) => {
+    const [e] = near(b, pool); if (!e) return;
+    const wing = k === 0 || k === front.length - 1, center = k === Math.floor((front.length - 1) / 2) || k === Math.ceil((front.length - 1) / 2);
+    if (G.plan === "push") issue(b, { type: "attack", bat: e.id });
+    else if (G.plan === "wait") issue(b, { type: "hold" });
+    else if (G.plan === "envelop"){
+      if (wing){ const fs = foeInf.slice().sort((a, c) => a.y - c.y), tgt = k === 0 ? fs[0] : fs[fs.length - 1]; if (!tgt) return;
+        const out = k === 0 ? -1 : 1, fx = tgt.x, fy = Math.max(40, Math.min(H - 40, tgt.y + out * 150));
+        if (hyp(b.x - fx, b.y - fy) > 60 && !b.contact && t < 900) issue(b, { type: "move", x: Math.round(fx), y: Math.round(fy) }); else issue(b, { type: "attack", bat: tgt.id }); }
+      else issue(b, (front[0].contact || front[front.length - 1].contact || t > 700) ? { type: "attack", bat: e.id } : { type: "hold" });
+    } else if (G.plan === "center"){
+      if (center) issue(b, { type: "attack", bat: e.id, space: 0 });
+      else issue(b, (front.some(f => f.contact) || t > 600) ? { type: "attack", bat: e.id } : { type: "hold" });
+    }
+  });
+  const worst = (() => { let k = -1, v = 0.05; for (let q = 0; q < SECT; q++){ if (G.bal[q] < -v && Math.abs(G.bal[q]) < 0.99){ v = -G.bal[q]; k = q; } } return k; })();
+  for (const r of mine.filter(b => b.role === "res")){
+    if (worst >= 0 && G.trend < 0.02){ const yk = (worst + 0.5) * H / SECT; const cand = foes.filter(f => Math.abs(f.y - yk) < 140); const [e] = near(r, cand.length ? cand : foes); if (e){ issue(r, { type: "attack", bat: e.id }); continue; } }
+    const weak = mine.filter(b => b.role === "front" && b.contact && (b.alive - b.rout) < 650)[0] || bats.filter(b => b.side === sd && b.role === "front" && b.broken)[0];
+    if (weak){ const [e] = near(weak, foes); if (e) issue(r, { type: "attack", bat: e.id }); }
+    else if (t > 1500){ const [e] = near(r, foes); if (e) issue(r, { type: "attack", bat: e.id }); }
+  }
+  for (const a of mine.filter(b => b.type === ARCH)){
+    const [e, d] = near(a, pool); if (!e) continue;
+    if (d > 150){ const k = (d - 130) / d, hs = highSpot(a.x + (e.x - a.x) * k, a.y + (e.y - a.y) * k, 40); issue(a, { type: "move", x: Math.round(hs[0] / 10) * 10, y: Math.round(hs[1] / 10) * 10 }); }
+    else issue(a, { type: "hold" });
+  }
+  // 騎兵:敵の騎兵を抑えるか、ぶつかった敵の横や後ろを突く
+  for (const cv of mine.filter(b => b.role === "wing")){
+    const foeCav = foes.filter(f => f.type === CAV && f.role === "wing" && terAt(f.x, f.y) !== FOREST && terAt(f.x, f.y) !== MARSH), [ec, dc] = near(cv, foeCav);
+    if (ec && dc < 350){ issue(cv, { type: "attack", bat: ec.id }); continue; }
+    const open = f => { const t = terAt(f.x, f.y); return t !== FOREST && t !== MARSH; };
+    const engaged = foeInf.filter(f => f.contact && open(f)); const [ef] = near(cv, engaged.length ? engaged : (G.plan === "push" || G.plan === "envelop" ? pool.filter(open) : []));
+    if (ef) issue(cv, { type: "attack", bat: ef.id }); else issue(cv, { type: "hold" });
+  }
+}
+
+// ───── 入口と出口(ほかのゲームはここだけを使う) ─────
+const MANPEI = {
+  version: ENGINE_VERSION,
+  setup, step,                                   // 合戦の準備(見守るか, 種, 再生する命令の記録)・1刻み進める(世界の0.1秒)
+  order: cmdOrder, smoke: cmdSmoke,              // 総大将の命令(伝令で届く)・狼煙
+  get tick(){ return tick; }, get over(){ return over; }, get seed(){ return battleSeed; },
+  get log(){ return orderLog; },                 // プレイヤーの命令の記録(種と合わせて、同じ合戦を再生できる)
+  get bats(){ return bats; }, get gens(){ return gens; }, get events(){ return events; },
+  soldiers: { get x(){ return sx; }, get y(){ return sy; }, get state(){ return st; }, get side(){ return sside; }, get comp(){ return scomp; }, get hp(){ return hp; }, get morale(){ return mor; }, get fatigue(){ return fat; } },
+  hash: stateHash,                               // 合戦の様子を一つの数に(同じ合戦かの確かめ)
+};
+
+// ───── 別の流れ(Worker)で動かすとき ─────
+// 画面から「準備」「速さ」「命令」を受け取り、計算を進め、画面が使う様子を送り返す。兵の入れ物は画面と分け合っているので送らない
+if (typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope){
+  let wSpeed = 0, wAcc = 0, wLast = performance.now(), wReal = 0, wTicks = 0, wT0 = performance.now(), wSet = false;   // wSet:画面から準備を受け取ったか
+  const snap = () => {
+    const ev = events.splice(0), de = deaths.splice(0);
+    postMessage({ t: "snap", tick, over, watch, battleSeed, seed, orderLog, replayLog, lost, arrowKills, rallied, bats, gens, msgs, runners, smokes, cq, arrows, cord, events: ev, deaths: de, real: wReal });
+  };
+  // 休まず計算し、画面へは約30分の1秒ごとに様子を送る(次の計算はすぐに始める)
+  let wLastSnap = 0; const ch = new MessageChannel(); ch.port1.onmessage = () => loop();
+  const loop = () => {
+    const now = performance.now();
+    if (wSpeed > 0 && wSet){
+      wAcc += (now - wLast) / 100 * wSpeed; if (wAcc > 60) wAcc = 60;
+      const t0 = performance.now();
+      while (wAcc >= 1 && performance.now() - t0 < 25){ step(); wAcc--; wTicks++; }
+    } else wAcc = 0;
+    wLast = now;
+    if (now - wT0 > 1000){ wReal = wTicks / ((now - wT0) / 100); wTicks = 0; wT0 = now; }   // 実際に出ている速さ(×何倍)
+    if (wSet && now - wLastSnap > 30){ snap(); wLastSnap = now; }
+    if (wSpeed > 0 && wAcc >= 1) ch.port2.postMessage(0); else setTimeout(loop, 8);
+  };
+  self.onmessage = e => {
+    const d = e.data;
+    if (d.t === "setup"){ buildNav(); setup(d.watch, d.seed, d.replay); wAcc = 0; wSet = true; snap(); }
+    else if (d.t === "speed") wSpeed = d.v;
+    else if (d.t === "cmd") cmd(d.c);
+    else if (d.t === "hash") postMessage({ t: "hash", tick, h: stateHash() });   // 確かめ用
+  };
+  postMessage({ t: "ready" });
+  loop();
+}
+
+// ───── 地形(5mの区画)。丘は高さで持つ ─────
+const TC = 5, TW = W / TC, TH = H / TC;
+const PLAIN = 0, FOREST = 1, MARSH = 2, RIVER = 3, FORD = 4, ROAD = 5, BRIDGE = 6;
+const T_NAME = ["平地", "森", "沼", "川", "浅瀬", "道", "橋"];
+const ter = TA(Uint8Array, TW * TH), hgt = TA(Float32Array, TW * TH);
+// 歩く速さの倍率 [歩兵, 弓, 騎兵][地形]
+const TSPD = [[1, 0.6, 0.42, 0, 0.45, 1.2, 1], [1, 0.6, 0.42, 0, 0.45, 1.2, 1], [1, 0.35, 0.25, 0, 0.45, 1.25, 1]];
+const terAt = (x, y) => { const tx = x / TC | 0, ty = y / TC | 0; return (tx < 0 || ty < 0 || tx >= TW || ty >= TH) ? PLAIN : ter[ty * TW + tx]; };
+function hAt(x, y){
+  const fx = Math.max(0, Math.min(TW - 1.001, x / TC - 0.5)), fy = Math.max(0, Math.min(TH - 1.001, y / TC - 0.5)), x0 = fx | 0, y0 = fy | 0, ax = fx - x0, ay = fy - y0, i = y0 * TW + x0;
+  return (hgt[i] * (1 - ax) + hgt[i + 1] * ax) * (1 - ay) + (hgt[i + TW] * (1 - ax) + hgt[i + TW + 1] * ax) * ay;
+}
+const wet = t => t === RIVER;
+// ───── 地図をつくる道具 ─────
+function clearMap(){ ter.fill(PLAIN); hgt.fill(0); }
+function paintDisc(type, x, y, r){
+  const r2 = r * r;
+  for (let ty = Math.max(0, (y - r) / TC | 0); ty <= Math.min(TH - 1, (y + r) / TC | 0); ty++)
+    for (let tx = Math.max(0, (x - r) / TC | 0); tx <= Math.min(TW - 1, (x + r) / TC | 0); tx++){
+      const cx = tx * TC + TC / 2 - x, cy = ty * TC + TC / 2 - y; if (cx * cx + cy * cy > r2) continue;
+      const k = ty * TW + tx;
+      if (type === BRIDGE && ter[k] !== RIVER && ter[k] !== BRIDGE) continue;     // 橋は川の上にだけ架かる
+      if (type === FORD && ter[k] !== RIVER && ter[k] !== FORD) continue;         // 浅瀬も川の中だけ
+      if (type === ROAD && (ter[k] === RIVER || ter[k] === FORD || ter[k] === BRIDGE)) continue;   // 道は川の手前で切れる(渡るには橋)
+      ter[k] = type;
+    }
+}
+function paintLine(type, x1, y1, x2, y2, r){ const d = Math.hypot(x2 - x1, y2 - y1), n = Math.max(1, Math.ceil(d / (TC * 0.8))); for (let k = 0; k <= n; k++) paintDisc(type, x1 + (x2 - x1) * k / n, y1 + (y2 - y1) * k / n, r); }
+function raise(x, y, r, dh){
+  for (let ty = Math.max(0, (y - r * 1.6) / TC | 0); ty <= Math.min(TH - 1, (y + r * 1.6) / TC | 0); ty++)
+    for (let tx = Math.max(0, (x - r * 1.6) / TC | 0); tx <= Math.min(TW - 1, (x + r * 1.6) / TC | 0); tx++){
+      const cx = tx * TC + TC / 2 - x, cy = ty * TC + TC / 2 - y, k = ty * TW + tx;
+      hgt[k] = Math.max(0, Math.min(40, hgt[k] + dh * Math.exp(-(cx * cx + cy * cy) / (r * r))));
+    }
+}
+// ───── 見本の戦場 ─────
+const PRESETS = {
+  plain: { name: "平原", make(){ clearMap(); } },
+  river: { name: "川の渡し", make(){ clearMap();
+    const pts = []; for (let y = -20; y <= H + 20; y += 25) pts.push([750 + Math.sin(y * 0.006) * 45 + Math.sin(y * 0.021) * 12, y]);
+    for (let k = 1; k < pts.length; k++) paintLine(RIVER, pts[k - 1][0], pts[k - 1][1], pts[k][0], pts[k][1], 11);
+    const at = y => 750 + Math.sin(y * 0.006) * 45 + Math.sin(y * 0.021) * 12;
+    paintLine(FORD, at(220) - 20, 220, at(220) + 20, 220, 16); paintLine(FORD, at(760) - 20, 760, at(760) + 20, 760, 16);
+    paintLine(ROAD, 0, 505, W, 505, 5); paintLine(BRIDGE, at(505) - 22, 505, at(505) + 22, 505, 8);
+    paintDisc(FOREST, 650, 880, 70); paintDisc(MARSH, 860, 120, 55); } },
+  hill: { name: "丘の陣", make(){ clearMap();
+    for (let y = 250; y <= 750; y += 50) raise(1010, y, 110, 7);
+    raise(470, 160, 90, 12); paintDisc(FOREST, 480, 870, 90); paintDisc(FOREST, 1180, 130, 60);
+    paintLine(ROAD, 0, 500, W, 520, 5); } },
+  pass: { name: "森の隘路", make(){ clearMap();
+    for (let x = 520; x <= 980; x += 40){ paintDisc(FOREST, x, 170 + Math.sin(x * 0.02) * 30, 150); paintDisc(FOREST, x, 840 + Math.cos(x * 0.017) * 30, 150); }
+    paintDisc(MARSH, 760, 690, 60); raise(760, 330, 70, 8); paintLine(ROAD, 0, 500, W, 500, 5); } },
+};
+// ───── 地図を文字にする/戻す(保存用) ─────
+function rle(arr){ let out = [], v = arr[0], n = 0; for (let i = 0; i < arr.length; i++){ if (arr[i] === v && n < 9999) n++; else { out.push(v + "x" + n); v = arr[i]; n = 1; } } out.push(v + "x" + n); return out.join(","); }
+function unrle(s, arr){ let i = 0; for (const p of s.split(",")){ const [v, n] = p.split("x").map(Number); arr.fill(v, i, i + n); i += n; } }
+function mapToJSON(){ const hq = new Uint8Array(TW * TH); for (let i = 0; i < hq.length; i++) hq[i] = Math.round(hgt[i] * 2); return JSON.stringify({ manpei: 1, ter: rle(ter), hgt: rle(hq) }); }
+function mapFromJSON(js){ const o = typeof js === "string" ? JSON.parse(js) : js; if (!o || o.manpei !== 1) throw new Error("形が違う"); unrle(o.ter, ter); const hq = new Uint8Array(TW * TH); unrle(o.hgt, hq); for (let i = 0; i < hq.length; i++) hgt[i] = hq[i] / 2; }
+
+// ───── 道探し(10mの区画で、通りやすさを考えて探す)─────
+const NG = 10, NW = W / NG, NH = H / NG;
+const navCost = [TA(Float32Array, NW * NH), TA(Float32Array, NW * NH)], navH = TA(Float32Array, NW * NH);   // [歩兵/弓, 騎兵]、高さ
+let pathBudget = 3;
+const navOcc = TA(Int16Array, NW * NH), navOccSide = TA(Int8Array, NW * NH);   // その区画にいる部隊(番号+1、混ざっていれば-1)と陣営
+let avoidBat = -1, avoidSide = -1;              // 道探しのとき、よけなくてよい自分の部隊   // 1刻みに探す道筋の数の上限(重さを抑える)
+// 地図の性質(何もない平原なら、地形の計算を省く)
+let mapSimple = true, mapWater = false;
+function mapFlags(){ mapSimple = true; mapWater = false; for (let i = 0; i < ter.length; i++){ if (ter[i] !== PLAIN || hgt[i] > 0.05) mapSimple = false; if (ter[i] === RIVER) mapWater = true; } }
+function buildNav(){
+  mapFlags();
+  for (let gy = 0; gy < NH; gy++) for (let gx = 0; gx < NW; gx++){
+    for (const k of [0, 1]){
+      let pass = 0, sum = 0, deep = 0, crossing = 0;
+      for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++){ const t = ter[(gy * 2 + dy) * TW + gx * 2 + dx], sp = TSPD[k ? 2 : 0][t]; if (t === RIVER) deep++; if (t === FORD || t === BRIDGE) crossing++; if (sp > 0){ pass++; sum += 1 / sp; } }
+      // 深い川が少しでも入っている区画は通らない(浅瀬や橋がある区画は別)
+      navCost[k][gy * NW + gx] = pass >= 2 && (deep === 0 || crossing >= 2) ? sum / pass : Infinity;
+    }
+    navH[gy * NW + gx] = hAt(gx * NG + 5, gy * NG + 5);
+  }
+}
+const pg = TA(Float32Array, NW * NH), pcame = TA(Int32Array, NW * NH), pstamp = TA(Uint32Array, NW * NH); let pgen = 0;
+const heapI = TA(Int32Array, NW * NH * 4), heapF = TA(Float32Array, NW * NH * 4);
+function nearestOpen(cost, gx, gy){
+  if (cost[gy * NW + gx] < Infinity) return gy * NW + gx;
+  for (let r = 1; r < 12; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++){
+    if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; const x = gx + dx, y = gy + dy;
+    if (x >= 0 && y >= 0 && x < NW && y < NH && cost[y * NW + x] < Infinity) return y * NW + x; }
+  return -1;
+}
+// まっすぐ行けるか(途中に川や歩きにくい所がないか)
+function straightOK(x0, y0, x1, y1, cav){
+  const cost = navCost[cav ? 1 : 0], d = Math.hypot(x1 - x0, y1 - y0), n = Math.max(1, Math.ceil(d / 5));
+  for (let k = 1; k <= n; k++){ const x = x0 + (x1 - x0) * k / n, y = y0 + (y1 - y0) * k / n, gx = Math.min(NW - 1, Math.max(0, x / NG | 0)), gy = Math.min(NH - 1, Math.max(0, y / NG | 0)), gi = gy * NW + gx; if (cost[gi] > 1.3) return false; if (occBlocks(gi)) return false; }
+  return true;
+}
+// 味方の別の部隊がいる区画か(よける)
+function occBlocks(gi){ const o = navOcc[gi]; return o !== 0 && navOccSide[gi] === avoidSide && o - 1 !== avoidBat; }
+function findPath(x0, y0, x1, y1, cav){
+  const cost = navCost[cav ? 1 : 0];
+  const s = nearestOpen(cost, Math.min(NW - 1, Math.max(0, x0 / NG | 0)), Math.min(NH - 1, Math.max(0, y0 / NG | 0)));
+  const g = nearestOpen(cost, Math.min(NW - 1, Math.max(0, x1 / NG | 0)), Math.min(NH - 1, Math.max(0, y1 / NG | 0)));
+  if (s < 0 || g < 0) return null;
+  pgen++; let hn = 0;
+  const push = (i, f) => { let k = hn++; while (k > 0){ const p = (k - 1) >> 1; if (heapF[p] <= f) break; heapF[k] = heapF[p]; heapI[k] = heapI[p]; k = p; } heapF[k] = f; heapI[k] = i; };
+  const pop = () => { const top = heapI[0], lf = heapF[--hn], li = heapI[hn]; let k = 0; for (;;){ let c = 2 * k + 1; if (c >= hn) break; if (c + 1 < hn && heapF[c + 1] < heapF[c]) c++; if (heapF[c] >= lf) break; heapF[k] = heapF[c]; heapI[k] = heapI[c]; k = c; } heapF[k] = lf; heapI[k] = li; return top; };
+  const gxg = g % NW, gyg = (g / NW) | 0;
+  pstamp[s] = pgen; pg[s] = 0; pcame[s] = -1; push(s, 0);
+  let found = false, guard = 0;
+  while (hn > 0 && guard++ < 16000){
+    const cur = pop(); if (cur === g){ found = true; break; }
+    const cx = cur % NW, cy = (cur / NW) | 0, gc = pg[cur], hc = navH[cur];
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++){
+      if (!dx && !dy) continue; const nx = cx + dx, ny = cy + dy; if (nx < 0 || ny < 0 || nx >= NW || ny >= NH) continue;
+      const ni = ny * NW + nx, cn = cost[ni]; if (cn === Infinity) continue;
+      if (dx && dy && (cost[cy * NW + nx] === Infinity || cost[ny * NW + cx] === Infinity)) continue;
+      const len = dx && dy ? 1.414 : 1, up = Math.max(0, navH[ni] - hc);
+      const ng = gc + len * (cost[cur] + cn) * 0.5 + up * 0.25 + (occBlocks(ni) ? 6 : 0);   // 味方の部隊の中は、なるべく通らない
+      if (pstamp[ni] === pgen && pg[ni] <= ng) continue;
+      pstamp[ni] = pgen; pg[ni] = ng; pcame[ni] = cur;
+      const hx = nx - gxg, hy = ny - gyg; push(ni, ng + Math.sqrt(hx * hx + hy * hy) * 1.1);   // 少し急いで探す(ほぼ最短で十分)
+    }
+  }
+  if (!found) return null;
+  const cells = []; for (let i = g; i >= 0; i = pcame[i]) cells.push(i); cells.reverse();
+  // 見通せる所は飛ばして、なめらかにする
+  const pts = [[x0, y0]]; let a = 0;
+  while (a < cells.length - 1){
+    let b = cells.length - 1;
+    for (; b > a + 1; b--){ const p = cells[a], q = cells[b]; if (straightCells(p, q, cost)) break; }
+    a = b; pts.push([(cells[a] % NW) * NG + 5, ((cells[a] / NW) | 0) * NG + 5]);
+  }
+  pts[pts.length - 1] = [x1, y1];
+  return pts;
+}
+function straightCells(p, q, cost){
+  const x0 = p % NW, y0 = (p / NW) | 0, x1 = q % NW, y1 = (q / NW) | 0, n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) * 2, c0 = Math.max(cost[p], cost[q]);
+  for (let k = 1; k < n; k++){ const x = Math.round(x0 + (x1 - x0) * k / n), y = Math.round(y0 + (y1 - y0) * k / n), c = cost[y * NW + x]; if (c === Infinity || c > c0 * 1.15 + 0.05) return false; }
+  return true;
+}
+// 地形が、その方向の横を守ってくれるか(川・沼・森)
+function flankCovered(x, y, dirx, diry){
+  let n = 0; for (let d = 25; d <= 70; d += 15){ const t = terAt(x + dirx * d, y + diry * d); if (t === RIVER || t === MARSH || t === FOREST) n++; }
+  return n >= 2;
+}
+// 近くでいちばん高い場所(弓の陣取り)
+function highSpot(x, y, r){
+  let bx = x, by = y, bh = hAt(x, y);
+  for (let dy = -r; dy <= r; dy += 10) for (let dx = -r; dx <= r; dx += 10){ const px = x + dx, py = y + dy; if (px < 20 || py < 20 || px > W - 20 || py > H - 20) continue; const t = terAt(px, py); if (t === RIVER || t === MARSH) continue; const h = hAt(px, py) - (t === FOREST ? 2 : 0); if (h > bh + 0.5){ bh = h; bx = px; by = py; } }
+  return [bx, by];
+}
+// ==== 万兵エンジン r19 ここまで ====
+</script>
+<script>
+
+// ───── 効果音(ブラウザの中で合成。設定の se-on / se-vol はほかのアプリと共通)─────
+const SE = (() => {
+  let ctx = null, master = null, comp = null, lastTap = 0, voices = 0;
+  const ls = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } };
+  let on = ls("se-on", "1") !== "0", vol = Math.max(0, Math.min(1, +ls("se-vol", "0.5")));
+  function ac(){
+    if (!on) return null;
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+    if (!ctx){ ctx = new AC(); comp = ctx.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 4; master = ctx.createGain(); master.connect(comp); comp.connect(ctx.destination); }
+    if (ctx.state === "suspended") ctx.resume();
+    master.gain.value = vol * 0.9;
+    return ctx;
+  }
+  function out(c, pan){ if (pan == null || !c.createStereoPanner) return master; const p = c.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan)); p.connect(master); return p; }
+  function env(c, gn, t0, a, peak, d){ gn.gain.setValueAtTime(0.0001, t0); gn.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t0 + a); gn.gain.exponentialRampToValueAtTime(0.0001, t0 + d); }
+  function note(c, f, t, d, o){
+    o = o || {};
+    const osc = c.createOscillator(), gn = c.createGain(), t0 = c.currentTime + (t || 0);
+    osc.type = o.type || "sine"; osc.frequency.setValueAtTime(f, t0);
+    if (o.f2) osc.frequency.exponentialRampToValueAtTime(o.f2, t0 + d);
+    if (o.vib){ const l = c.createOscillator(), lg = c.createGain(); l.frequency.value = o.vib; lg.gain.value = f * (o.vd || 0.015); l.connect(lg); lg.connect(osc.frequency); l.start(t0); l.stop(t0 + d + 0.05); }
+    env(c, gn, t0, o.a == null ? 0.005 : o.a, o.g == null ? 0.2 : o.g, d);
+    let last = gn;
+    if (o.lp){ const fl = c.createBiquadFilter(); fl.type = "lowpass"; fl.frequency.value = o.lp; gn.connect(fl); last = fl; }
+    osc.connect(gn); last.connect(o.dest || master); osc.start(t0); osc.stop(t0 + d + 0.05);
+  }
+  const bell = (c, f, t, d, g) => { note(c, f, t, d, { g }); note(c, f * 2, t, d * 0.6, { g: g * 0.35 }); note(c, f * 3.01, t, d * 0.3, { g: g * 0.12 }); };
+  let nbuf = null;
+  function noiseBuf(c){ if (!nbuf){ const n = c.sampleRate * 2; nbuf = c.createBuffer(1, n, c.sampleRate); const ch = nbuf.getChannelData(0); let b = 0;
+      for (let i = 0; i < n; i++){ const w = Math.random() * 2 - 1; b = 0.97 * b + 0.03 * w; ch[i] = w * 0.6 + b * 3; } } return nbuf; }
+  function noise(c, t, d, o){
+    o = o || {};
+    const src = c.createBufferSource(), fl = c.createBiquadFilter(), gn = c.createGain(), t0 = c.currentTime + (t || 0);
+    src.buffer = noiseBuf(c); src.playbackRate.value = o.rate || 1; fl.type = o.type || "lowpass"; fl.Q.value = o.q || 0.7;
+    fl.frequency.setValueAtTime(o.f || 400, t0); if (o.f2) fl.frequency.exponentialRampToValueAtTime(o.f2, t0 + d * 0.8);
+    env(c, gn, t0, o.a == null ? d * 0.35 : o.a, o.g || 0.08, d);
+    src.connect(fl); fl.connect(gn); gn.connect(o.dest || master); src.start(t0, Math.random() * 1.5); src.stop(t0 + d + 0.05);
+  }
+  // 人の声:声帯(のこぎり波)を、母音の響き(フォルマント)のフィルターに通す
+  const VOW = { a: [800, 1250, 2600], o: [500, 850, 2500], u: [350, 1000, 2400], e: [550, 1900, 2600] };
+  function voice(c, t, d, o){
+    const t0 = c.currentTime + t, f0 = o.f0, src = c.createOscillator(), gn = c.createGain(), mix = c.createGain();
+    src.type = "sawtooth"; src.frequency.setValueAtTime(f0 * 0.9, t0); src.frequency.linearRampToValueAtTime(f0 * (o.up || 1.12), t0 + d * 0.3); src.frequency.linearRampToValueAtTime(f0 * (o.end || 0.8), t0 + d);
+    const l = c.createOscillator(), lg = c.createGain(); l.frequency.value = 5 + Math.random() * 3; lg.gain.value = f0 * 0.03; l.connect(lg); lg.connect(src.frequency);
+    const fm = VOW[o.v || "a"], gains = [1, 0.5, 0.15];
+    fm.forEach((f, k) => { const bp = c.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = f * (o.fs || 1); bp.Q.value = 7; const g = c.createGain(); g.gain.value = gains[k]; src.connect(bp); bp.connect(g); g.connect(mix); });
+    const br = c.createBufferSource(), bf = c.createBiquadFilter(), bg = c.createGain(); br.buffer = noiseBuf(c); bf.type = "bandpass"; bf.frequency.value = 1500; bf.Q.value = 0.8; bg.gain.value = 0.25; br.connect(bf); bf.connect(bg); bg.connect(mix);
+    mix.connect(gn); env(c, gn, t0, d * 0.15, o.g, d); gn.connect(o.dest || master);
+    src.start(t0); l.start(t0); br.start(t0, Math.random()); src.stop(t0 + d + 0.05); l.stop(t0 + d + 0.05); br.stop(t0 + d + 0.05);
+  }
+  const shoutOne = (c, t, o) => voice(c, t, 0.35 + Math.random() * 0.5, { f0: 110 + Math.random() * 90, v: "aoue"[Math.random() * 4 | 0], g: (o.g || 1) * 0.05, dest: o.dest, fs: 0.9 + Math.random() * 0.25 });
+  const lib = {
+    tap: c => note(c, 880, 0, 0.05, { f2: 660, g: 0.05 }),
+    tab: c => { note(c, 520, 0, 0.07, { type: "triangle", g: 0.07 }); note(c, 780, 0.03, 0.06, { type: "triangle", g: 0.04 }); },
+    toggleOn: c => note(c, 600, 0, 0.08, { f2: 1150, g: 0.08 }),
+    toggleOff: c => note(c, 900, 0, 0.08, { f2: 480, g: 0.06 }),
+    done: c => { bell(c, 1046.5, 0, 0.45, 0.11); bell(c, 1318.5, 0.08, 0.6, 0.11); },
+    fanfare: c => { [523.25, 659.25, 783.99].forEach((f, i) => { note(c, f, i * 0.09, 0.3, { type: "triangle", g: 0.12 }); note(c, f * 2, i * 0.09, 0.2, { g: 0.03 }); });
+      bell(c, 1046.5, 0.27, 1.1, 0.13); note(c, 523.25, 0.27, 1.0, { type: "triangle", g: 0.06 }); },
+    down: c => { note(c, 392, 0, 0.5, { f2: 330, type: "triangle", g: 0.08 }); note(c, 330, 0.45, 0.9, { f2: 247, type: "triangle", g: 0.08 }); },
+    // 陣太鼓
+    drum: (c, o) => { const d = out(c, o && o.pan), g = (o && o.g) || 1; note(c, 95, 0, 0.45, { f2: 52, g: 0.25 * g, dest: d }); noise(c, 0, 0.15, { f: 700, g: 0.05 * g, a: 0.003, dest: d }); note(c, 95, 0.32, 0.4, { f2: 52, g: 0.18 * g, dest: d }); },
+    // 法螺貝
+    horn: (c, o) => { const f = (o && o.f) || 220, d = out(c, o && o.pan); note(c, f * 0.97, 0, 1.6, { f2: f, type: "sawtooth", g: 0.05, lp: 800, a: 0.25, vib: 4.5, vd: 0.02, dest: d }); note(c, f * 2, 0.08, 1.4, { type: "sawtooth", g: 0.015, lp: 1400, a: 0.3, dest: d }); noise(c, 0, 1.4, { type: "bandpass", f: f * 3, q: 3, g: 0.01, dest: d }); },
+    // 鬨の声(ときのこえ):大勢が一度に叫ぶ
+    warcry: (c, o) => { const d = out(c, o && o.pan), n = 9; for (let k = 0; k < n; k++) voice(c, Math.random() * 0.25, 1.1 + Math.random() * 0.6, { f0: 100 + Math.random() * 80, v: Math.random() < 0.6 ? "o" : "a", g: 0.035 * ((o && o.g) || 1), up: 1.25, end: 0.9, dest: d, fs: 0.9 + Math.random() * 0.2 }); },
+    // 怒号・掛け声(ひとり)
+    shout: (c, o) => shoutOne(c, 0, { g: o && o.g, dest: out(c, o && o.pan) }),
+    // 悲鳴・逃げる叫び
+    scream: (c, o) => { const d = out(c, o && o.pan); voice(c, 0, 0.5 + Math.random() * 0.4, { f0: 220 + Math.random() * 120, v: Math.random() < 0.5 ? "a" : "e", g: 0.035 * ((o && o.g) || 1), up: 1.3, end: 0.6, dest: d, fs: 1.1 }); },
+    // 槍が盾に当たる(木の鈍い音)
+    spear: (c, o) => { const d = out(c, o && o.pan), g = (o && o.g) || 1, f = 180 + Math.random() * 120;
+      noise(c, 0, 0.07, { type: "bandpass", f: 900 + Math.random() * 500, q: 3, g: 0.09 * g, a: 0.002, dest: d }); note(c, f, 0, 0.09, { f2: f * 0.7, type: "triangle", g: 0.07 * g, a: 0.001, dest: d }); },
+    // 刃と刃(金属)
+    clang: (c, o) => { const d = out(c, o && o.pan), g = (o && o.g) || 1, f = 1500 + Math.random() * 1500;
+      noise(c, 0, 0.04, { type: "bandpass", f: 3800, q: 2.5, g: 0.04 * g, a: 0.001, dest: d }); note(c, f, 0, 0.18, { type: "triangle", g: 0.025 * g, a: 0.001, dest: d }); note(c, f * 1.51, 0, 0.12, { g: 0.01 * g, a: 0.001, dest: d }); },
+    // 肉を打つ・倒れる
+    flesh: (c, o) => { const d = out(c, o && o.pan), g = (o && o.g) || 1; noise(c, 0, 0.12, { f: 260, g: 0.08 * g, a: 0.004, dest: d }); },
+    // 騎兵の激突
+    impact: (c, o) => { const d = out(c, o && o.pan), g = (o && o.g) || 1; noise(c, 0, 0.3, { f: 180, g: 0.12 * g, a: 0.005, dest: d }); for (let k = 0; k < 4; k++){ noise(c, k * 0.03, 0.08, { type: "bandpass", f: 900, q: 2, g: 0.05 * g, a: 0.002, dest: d }); } },
+    // 足音(行進:ザッザッ/駆け足:バラバラ)
+    step: (c, o) => { const d = out(c, o && o.pan), g = (o && o.g) || 1; noise(c, 0, 0.09, { type: "bandpass", f: 650 + Math.random() * 300, q: 1.2, g: 0.06 * g, a: 0.006, dest: d }); noise(c, 0, 0.08, { f: 140, g: 0.05 * g, a: 0.004, dest: d }); },
+    // 蹄の音(タカタッ)
+    gallop: (c, o) => { const d = out(c, o && o.pan), g = (o && o.g) || 1; [0, 0.07, 0.13].forEach((t, k) => { noise(c, t, 0.07, { f: 220 + k * 40, g: 0.08 * g * (k === 2 ? 1.3 : 1), a: 0.003, dest: d }); noise(c, t, 0.04, { type: "bandpass", f: 1400, q: 2, g: 0.02 * g, a: 0.002, dest: d }); }); },
+    // 馬のいななき
+    neigh: (c, o) => { const d = out(c, o && o.pan); voice(c, 0, 0.9, { f0: 600, v: "e", g: 0.025, up: 1.15, end: 0.45, dest: d, fs: 1.4 }); },
+    // 矢を放つ(ビュン)・矢が落ちる(トッ)
+    loose: (c, o) => { const d = out(c, o && o.pan), g = (o && o.g) || 1; noise(c, 0, 0.18, { type: "bandpass", f: 2600, f2: 1200, q: 1.5, g: 0.03 * g, a: 0.01, dest: d }); note(c, 160, 0, 0.06, { g: 0.03 * g, dest: d }); },
+    thunk: (c, o) => { const d = out(c, o && o.pan), g = (o && o.g) || 1; noise(c, 0, 0.05, { type: "bandpass", f: 1100, q: 3, g: 0.05 * g, a: 0.001, dest: d }); },
+    // 狼煙が上がる
+    smoke: (c, o) => { noise(c, 0, 1.6, { type: "bandpass", f: 300, f2: 900, q: 0.8, g: 0.05, a: 0.4 }); for (let k = 0; k < 5; k++) noise(c, 0.2 + k * 0.17, 0.05, { type: "highpass", f: 2500, g: 0.02, a: 0.002 }); },
+  };
+  // 戦場のどよめき(ずっと鳴らし、大きさだけ変える)
+  let amb = null;
+  function ambient(level, march){
+    const c = ac(); if (!c){ if (amb){ amb.g.gain.value = 0; amb.g2.gain.value = 0; } return; }
+    if (!amb){
+      const src = c.createBufferSource(), g = c.createGain(), mix = c.createGain(); src.buffer = noiseBuf(c); src.loop = true;
+      [[320, 1.5, 1], [700, 3, 0.6], [1150, 4, 0.35]].forEach(([f, q, gg]) => { const bp = c.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = f; bp.Q.value = q; const x = c.createGain(); x.gain.value = gg; src.connect(bp); bp.connect(x); x.connect(mix); });
+      const lfo = c.createOscillator(), lg = c.createGain(); lfo.frequency.value = 0.35; lg.gain.value = 0.3; lfo.connect(lg); lg.connect(mix.gain); lfo.start();
+      mix.connect(g); g.gain.value = 0; g.connect(master); src.start();
+      const s2 = c.createBufferSource(), f2 = c.createBiquadFilter(), g2 = c.createGain(); s2.buffer = noiseBuf(c); s2.loop = true; s2.playbackRate.value = 0.5; f2.type = "lowpass"; f2.frequency.value = 160; g2.gain.value = 0; s2.connect(f2); f2.connect(g2); g2.connect(master); s2.start();
+      amb = { g, g2 };
+    }
+    amb.g.gain.setTargetAtTime(Math.min(0.2, level), c.currentTime, 0.5);
+    amb.g2.gain.setTargetAtTime(Math.min(0.15, march || 0), c.currentTime, 0.5);
+  }
+  function play(name, opt){
+    try { const c = ac(); if (!c || !lib[name]) return;
+      if (name === "tap" || name === "tab"){ const now = Date.now(); if (now - lastTap < 45) return; lastTap = now; }
+      lib[name](c, opt); } catch (e) {}
+  }
+  function setOn(v){ on = v; try { localStorage.setItem("se-on", on ? "1" : "0"); } catch (e) {} if (!on && amb){ amb.g.gain.value = 0; amb.g2.gain.value = 0; } }
+  function mount(anchor){
+    if (!anchor || document.getElementById("se-row")) return;
+    const row = document.createElement("div"); row.id = "se-row"; row.className = "se-row";
+    row.innerHTML = '<span>効果音</span><button type="button" id="se-on"></button><label class="se-vol">音量 <input id="se-vol" type="range" min="0" max="1" step="0.05"></label>';
+    anchor.parentNode.insertBefore(row, anchor);
+    const b = row.querySelector("#se-on"), r = row.querySelector("#se-vol");
+    const show = () => { b.textContent = on ? "入" : "切"; b.setAttribute("aria-pressed", String(on)); r.value = vol; r.disabled = !on; if (window.__onSE) window.__onSE(); };
+    b.addEventListener("click", () => { setOn(!on); show(); if (on) play("toggleOn"); });
+    r.addEventListener("input", () => { vol = +r.value; try { localStorage.setItem("se-vol", String(vol)); } catch (e) {} if (ctx && master) master.gain.value = vol * 0.9; });
+    r.addEventListener("change", () => play("done"));
+    show(); SE.refresh = show;
+  }
+  return { play, ambient, mount, setOn, get on(){ return on; } };
+})();
+// ───── 計算を別の流れ(Worker)で動かす ─────
+// GitHub Pages などで「入れ物を分け合える」ときだけ使う。使えないときは、これまでどおり画面と同じ流れで計算する
+const MPW = (() => {
+  if (!window.__MP_SHARED_ON) return null;
+  try {
+    const src = URL.createObjectURL(new Blob([document.getElementById("mp-engine").textContent], { type: "text/javascript" }));
+    const boot = "self.onmessage = e => { self.__MP_SHARED_TAKE = e.data.bufs; importScripts(e.data.src); };";
+    const w = new Worker(URL.createObjectURL(new Blob([boot], { type: "text/javascript" })));
+    w.postMessage({ bufs: SHARED.list, src });
+    const api = { w, ready: false, real: 0, speed: -1 };
+    w.onmessage = e => {
+      const d = e.data;
+      if (d.t === "ready"){ api.ready = true; return; }
+      if (d.t === "hash"){ api.lastHash = [d.tick, d.h]; return; }
+      if (d.t !== "snap") return;
+      tick = d.tick; over = d.over; watch = d.watch; battleSeed = d.battleSeed; seed = d.seed; orderLog = d.orderLog; replayLog = d.replayLog;
+      lost = d.lost; arrowKills = d.arrowKills; rallied = d.rallied; api.real = d.real;
+      const selId = sel && typeof sel === "object" ? sel.id : null;
+      bats.length = 0; for (const b of d.bats) bats.push(b);
+      gens.length = 0; for (const g of d.gens) gens.push(g);
+      msgs = d.msgs; runners = d.runners; smokes = d.smokes; cq = d.cq; arrows = d.arrows;
+      for (let c = 0; c < d.cord.length; c++) cord[c] = d.cord[c];
+      for (const v of d.events) events.push(v);
+      for (const v of d.deaths) deaths.push(v);
+      if (selId != null) sel = bats[selId];
+    };
+    // 準備と命令は別の流れへ送る(画面の側でも同じ準備をして、すぐに部隊の一覧などを使えるようにする)
+    const localSetup = setup;
+    setup = (watchMode, seedIn, replay) => {
+      const sd = seedIn != null ? seedIn | 0 : (Math.random() * 1e9) | 0;
+      localSetup(watchMode, sd, replay);
+      w.postMessage({ t: "setup", watch: !!watchMode, seed: sd, replay: replay || null });
+    };
+    cmdOrder = (bt, ord) => { if (replayLog) return false; w.postMessage({ t: "cmd", c: { k: "order", bat: bt.id, ord } }); return true; };
+    cmdSmoke = (sd, kind) => { if (replayLog) return false; w.postMessage({ t: "cmd", c: { k: "smoke", sd, kind } }); return true; };
+    return api;
+  } catch (e){ console.warn("別の流れで動かせませんでした:", e); return null; }
+})();
+
+// ───── 見る位置(カメラ):中心・拡大・回転・傾き ─────
+const cv = document.getElementById("cv"), ctx = cv.getContext ? cv.getContext("2d") : null;
+const ground = document.createElement("canvas"); ground.width = W; ground.height = H;
+const gctx = ground.getContext ? ground.getContext("2d") : null;
+let ov = null, oimg = null, obuf = null, dpr = 1, fitted = false;
+const cam = { cx: W / 2, cy: H / 2, s: 1, yaw: 0, pitch: 0 }, camGoal = { yaw: 0, pitch: 0 };
+let CW = 1, CH = 1, cc = 1, ss = 0, cp = 1, sp2 = 0, Dm = 1000;
+function camPrep(){ cc = Math.cos(cam.yaw); ss = Math.sin(cam.yaw); cp = Math.cos(cam.pitch); sp2 = Math.sin(cam.pitch); Dm = CH / cam.s * 1.3; }
+function proj(wx, wy){
+  const dx = wx - cam.cx, dy = wy - cam.cy, u = dx * cc + dy * ss, v = -dx * ss + dy * cc, den = Dm - v * sp2;
+  if (den < Dm * 0.08) return null; const k = Dm / den;
+  return [CW / 2 + u * cam.s * k, CH / 2 + v * cp * cam.s * k, k];
+}
+function unproj(X, Y){
+  const a = (X - CW / 2) / cam.s, b = (Y - CH / 2) / cam.s, den = Dm * cp + b * sp2;
+  if (den <= Dm * 0.02) return null;
+  const v = b * Dm / den, k = Dm / (Dm - v * sp2), u = a / k;
+  return [cam.cx + u * cc - v * ss, cam.cy + u * ss + v * cc];
+}
+// 高さのあるもの(旗・矢・煙)を持ち上げて見せる量
+const lift = (z, k) => z * cam.s * k * (0.25 + 0.75 * sp2);
+function baseScale(){ return Math.min(CW / W, CH / H); }
+// 地面:地形を色で、丘を陰影と等高線で塗る(rect を渡すとその範囲だけ塗り直す)
+const T_COL = [null, [44, 74, 40], [92, 98, 64], [50, 88, 124], [96, 136, 152], [156, 136, 98], [118, 84, 50]];
+const nz = (x, y) => { let h = (x * 374761393 + y * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return ((h ^ (h >>> 16)) & 1023) / 1023; };
+function paintGround(x0, y0, x1, y1){
+  if (!gctx) return;
+  x0 = Math.max(0, (x0 || 0) | 0); y0 = Math.max(0, (y0 || 0) | 0); x1 = Math.min(W, x1 == null ? W : Math.ceil(x1)); y1 = Math.min(H, y1 == null ? H : Math.ceil(y1));
+  const w = x1 - x0, h = y1 - y0; if (w <= 0 || h <= 0) return;
+  const img = gctx.createImageData(w, h), d = new Uint32Array(img.data.buffer);
+  for (let y = y0; y < y1; y++){
+    const ty = Math.min(TH - 1, y / TC | 0);
+    for (let x = x0; x < x1; x++){
+      const tx = Math.min(TW - 1, x / TC | 0), k = ty * TW + tx, t = ter[k], n = nz(x, y) * 9;
+      let r, g, b;
+      if (t === PLAIN){ const wv = Math.sin(x * 0.006 + Math.cos(y * 0.004) * 2) * 9 + Math.sin(x * 0.03) * Math.cos(y * 0.025) * 3; r = 78 + n + wv; g = 86 + n + wv * 1.1; b = 52 + n * 0.5; }
+      else { const c = T_COL[t]; r = c[0] + n; g = c[1] + n; b = c[2] + n * 0.6;
+        if (t === FOREST){ const q = nz(x >> 2, y >> 2); if (q > 0.55){ r *= 0.7; g *= 0.75; b *= 0.7; } else if (q < 0.12){ r *= 1.15; g *= 1.12; } }
+        if (t === MARSH && nz(x >> 1, y >> 1) > 0.8){ r = 70; g = 92; b = 98; }
+        if ((t === RIVER || t === FORD) && (Math.sin(x * 0.4 + y * 0.15 + nz(x >> 3, y >> 3) * 3) > 0.92)){ r += 30; g += 30; b += 30; }
+        if (t === BRIDGE && ((x + y) & 3) === 0){ r *= 0.75; g *= 0.75; b *= 0.75; } }
+      // 丘の陰影(北西から光が当たる)と等高線(4mごと)
+      const hx = hgt[k + (tx < TW - 1 ? 1 : 0)] - hgt[k - (tx > 0 ? 1 : 0)], hy = hgt[k + (ty < TH - 1 ? TW : 0)] - hgt[k - (ty > 0 ? TW : 0)];
+      let sh = 1 - (hx + hy) * 0.05; sh = Math.max(0.6, Math.min(1.35, sh));
+      const hh = hAt(x, y); if (hh > 0.5 && Math.abs(hh % 4 - 2) > 1.85) sh *= 0.8;
+      r = Math.min(255, r * sh); g = Math.min(255, g * sh); b = Math.min(255, b * sh);
+      d[(y - y0) * w + (x - x0)] = (255 << 24) | (b << 16) | (g << 8) | r;
+    }
+  }
+  gctx.putImageData(img, x0, y0);
+  gctx.strokeStyle = "rgba(255,255,230,.06)"; gctx.lineWidth = 1;
+  for (let x = Math.ceil(x0 / 100) * 100; x <= x1; x += 100){ gctx.beginPath(); gctx.moveTo(x, y0); gctx.lineTo(x, y1); gctx.stroke(); }
+  for (let y = Math.ceil(y0 / 100) * 100; y <= y1; y += 100){ gctx.beginPath(); gctx.moveTo(x0, y); gctx.lineTo(x1, y); gctx.stroke(); }
+}
+function fit(keep){
+  const r = cv.getBoundingClientRect(); dpr = window.devicePixelRatio || 1;
+  cv.width = Math.max(1, r.width * dpr | 0); cv.height = Math.max(1, r.height * dpr | 0); CW = cv.width; CH = cv.height;
+  if (!keep){ cam.cx = W / 2; cam.cy = H / 2; cam.s = baseScale() * 0.97; }
+  fitted = true;
+  if (ctx){ ov = document.createElement("canvas"); ov.width = CW; ov.height = CH; const oc = ov.getContext("2d"); oimg = oc.createImageData(CW, CH); obuf = new Uint32Array(oimg.data.buffer); ov._c = oc; }
+}
+function drawGround(){
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = "#1A1812"; ctx.fillRect(0, 0, CW, CH);
+  ctx.imageSmoothingEnabled = cam.s < 2.5;
+  if (cam.pitch < 0.005){
+    ctx.setTransform(cam.s * cc, -cam.s * ss, cam.s * ss, cam.s * cc, CW / 2 - cam.s * (cc * cam.cx + ss * cam.cy), CH / 2 - cam.s * (-ss * cam.cx + cc * cam.cy));
+    ctx.drawImage(ground, 0, 0); ctx.setTransform(1, 0, 0, 1, 0, 0); return;
+  }
+  const N = 48, hgt = CH / N; let skyEnd = -1;
+  for (let k = 0; k < N; k++){
+    const Y0 = k * hgt, Ym = Y0 + hgt / 2, b = (Ym - CH / 2) / cam.s, den = Dm * cp + b * sp2;
+    if (den <= Dm * 0.02){ skyEnd = Y0 + hgt; continue; }
+    const vm = b * Dm / den, q = Dm - vm * sp2, km = Dm / q, A = cam.s * km, Bv = cam.s * cp * Dm * Dm / (q * q);
+    ctx.save(); ctx.beginPath(); ctx.rect(0, Y0 - 0.5, CW, hgt + 1); ctx.clip();
+    ctx.setTransform(A * cc, -Bv * ss, A * ss, Bv * cc, CW / 2 - A * (cc * cam.cx + ss * cam.cy), Ym - Bv * (-ss * cam.cx + cc * cam.cy + vm));
+    ctx.drawImage(ground, 0, 0); ctx.restore();
+  }
+  if (skyEnd > 0){ const g = ctx.createLinearGradient(0, 0, 0, skyEnd); g.addColorStop(0, "#2B3A4C"); g.addColorStop(1, "#6E7F88"); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = g; ctx.fillRect(0, 0, CW, skyEnd); }
+}
+
+// ───── 描く ─────
+// 色:[陣営][兵種][ふつう/逃げる]
+const COL = [[[[95, 140, 235], [165, 190, 240]], [[120, 175, 240], [175, 200, 240]], [[70, 110, 210], [150, 175, 230]]],
+             [[[225, 85, 70], [240, 170, 150]], [[240, 125, 95], [240, 185, 160]], [[195, 60, 50], [230, 160, 145]]]];
+const SND = { fight: 0, pans: [], march: 0, run: 0, gallop: 0, gpans: [], rout: 0, loosed: 0, lpan: 0, landed: 0 };
+function draw(){
+  if (!ctx || !obuf) return;
+  camPrep();
+  if (gctx && deaths.length){ for (let k = 0; k < deaths.length; k += 3){ gctx.fillStyle = deaths[k + 2] ? "rgba(70,22,18,.85)" : "rgba(28,30,58,.85)"; gctx.fillRect(deaths[k] - 0.5, deaths[k + 1] - 0.5, 1, 1); } deaths.length = 0; }
+  drawGround();
+  obuf.fill(0);
+  const s = cam.s; SND.fight = 0; SND.pans.length = 0; SND.march = 0; SND.run = 0; SND.gallop = 0; SND.gpans.length = 0; SND.rout = 0;
+  for (let i = 0; i < M; i++){
+    const sti = st[i];
+    if (sti >= DEAD && sti !== WOUND) continue;
+    const dx = sx[i] - cam.cx, dy = sy[i] - cam.cy, u = dx * cc + dy * ss, v = -dx * ss + dy * cc, den = Dm - v * sp2;
+    if (den < Dm * 0.08) continue;
+    const k = Dm / den, X0 = CW / 2 + u * s * k, Y0 = CH / 2 + v * cp * s * k;
+    if (X0 < -20 || Y0 < -20 || X0 >= CW + 20 || Y0 >= CH + 20) continue;
+    const ty = ctype[scomp[i]];
+    if (fighting[i]){ SND.fight++; if (SND.pans.length < 24 && (i & 7) === 0) SND.pans.push(X0 / CW * 2 - 1); }
+    else if (st[i] === ROUT) SND.rout++;
+    else if (ty === CAV){ if (mv[i] > 0.25){ SND.gallop++; if (SND.gpans.length < 12 && (i & 15) === 0) SND.gpans.push(X0 / CW * 2 - 1); } }
+    else if (mv[i] > 0.19) SND.run++; else if (mv[i] > 0.08) SND.march++;
+    const kk = Math.max(1, Math.min(18, Math.round(s * k * (ty === CAV ? 1.25 : 0.75)))), half = kk >> 1, X = (X0 | 0) - half, Y = (Y0 | 0) - half;
+    let col;
+    if (sti === WOUND) col = sside[i] ? 0xFF8A93C8 : 0xFFC8A890;
+    else if (tick - hitT[i] < 3) col = 0xFFF2F6FF;
+    else { const c = COL[sside[i]][ty][st[i] === ROUT ? 1 : 0], h = 0.55 + 0.45 * Math.max(0, hp[i]) / HP0[ty], lead = role[i] ? 1.25 : 1;
+      col = (255 << 24) | (Math.min(255, c[2] * h * lead) << 16) | (Math.min(255, c[1] * h * lead) << 8) | Math.min(255, c[0] * h * lead); }
+    const ye = Math.min(CH, Y + kk), xe = Math.min(CW, X + kk);
+    for (let yy = Math.max(0, Y); yy < ye; yy++){ const row = yy * CW; for (let xx = Math.max(0, X); xx < xe; xx++) obuf[row + xx] = col; }
+  }
+  ov._c.putImageData(oimg, 0, 0); ctx.drawImage(ov, 0, 0);
+  if (editing) drawZones();
+  drawArrows(); drawMsgs(); drawRunners(); drawSmoke(); drawOrderLine(); drawFlags(); drawCompMarks(); drawScale();
+}
+function drawArrows(){
+  ctx.lineWidth = Math.max(1, dpr * 0.9); SND.loosed = 0; SND.lpan = 0; SND.landed = 0;
+  for (const a of arrows){
+    const T = a.t1 - a.t0, age = tick - a.t0;
+    if (age === 1 || (age > 0 && age <= 2 && !a.heard)){ const p = proj(a.x0, a.y0); if (p && p[0] > 0 && p[0] < CW && p[1] > 0 && p[1] < CH){ SND.loosed++; SND.lpan += p[0] / CW * 2 - 1; } a.heard = 1; }
+    if (a.t1 === tick || (tick > a.t1 && !a.heardL)){ a.heardL = 1; if (a.hit >= 1){ const p = proj(a.x1, a.y1); if (p && p[0] > 0 && p[0] < CW) SND.landed++; } }
+    if (age < 0 || age > T + 6) continue;
+    const t = Math.min(1, age / T), t0 = Math.max(0, t - 0.08), d = hyp(a.x1 - a.x0, a.y1 - a.y0), hgt = d * 0.22;
+    const P = (q) => { const x = a.x0 + (a.x1 - a.x0) * q, y = a.y0 + (a.y1 - a.y0) * q, p = proj(x, y); if (!p) return null; p[1] -= lift(4 * hgt * q * (1 - q), p[2]); return p; };
+    if (age > T){ const p = proj(a.x1, a.y1); if (!p) continue; ctx.fillStyle = "rgba(230,220,190," + (0.5 * (1 - (age - T) / 6)) + ")"; ctx.fillRect(p[0] - dpr * 0.6, p[1] - dpr * 0.6, dpr * 1.2, dpr * 1.2); continue; }
+    const p1 = P(t0), p2 = P(t); if (!p1 || !p2) continue;
+    ctx.strokeStyle = "rgba(245,235,205,.55)"; ctx.beginPath(); ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); ctx.stroke();
+  }
+}
+// 布陣の場所(つくる画面で、両軍がどこに並ぶかを見せる)
+function drawZones(){
+  for (const [x0, x1, col] of [[230, 630, "rgba(80,130,230,.13)"], [870, 1270, "rgba(230,90,70,.13)"]]){
+    const ps = [[x0, 30], [x1, 30], [x1, H - 30], [x0, H - 30]].map(p => proj(p[0], p[1])); if (ps.some(p => !p)) continue;
+    ctx.fillStyle = col; ctx.beginPath(); ps.forEach((p, k) => k ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath(); ctx.fill();
+  }
+}
+function drawRunners(){
+  for (const r of runners){ const p = proj(r.x, r.y); if (!p) continue;
+    if (r.dead){ ctx.fillStyle = "rgba(255,120,90,.8)"; ctx.fillRect(p[0] - 2 * dpr, p[1] - 2 * dpr, 4 * dpr, 4 * dpr); continue; }
+    ctx.fillStyle = r.sd === 0 ? "#E8F0FF" : "#FFD9CF"; ctx.strokeStyle = "rgba(20,18,13,.8)"; ctx.lineWidth = 1 * dpr;
+    ctx.beginPath(); ctx.arc(p[0], p[1], 2.6 * dpr, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+}
+function drawMsgs(){
+  for (const m of msgs){
+    if (m.wait > 0 || m.near) continue;
+    const p = proj(m.x, m.y); if (!p) continue;
+    if (m.dead){ ctx.strokeStyle = "rgba(255,120,90,.9)"; ctx.lineWidth = 2 * dpr; const r = 4 * dpr; ctx.beginPath(); ctx.moveTo(p[0] - r, p[1] - r); ctx.lineTo(p[0] + r, p[1] + r); ctx.moveTo(p[0] + r, p[1] - r); ctx.lineTo(p[0] - r, p[1] + r); ctx.stroke(); continue; }
+    if (m.sd === 0){ const bt = bats[m.bat], q = batPos(bt), b = proj(q[0], q[1]);
+      if (b){ ctx.setLineDash([4 * dpr, 4 * dpr]); ctx.strokeStyle = "rgba(240,225,180,.4)"; ctx.lineWidth = 1 * dpr; ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); ctx.setLineDash([]); } }
+    ctx.fillStyle = m.sd === 0 ? "#F4E2A8" : "#F2A08C"; ctx.strokeStyle = "rgba(20,18,13,.8)"; ctx.lineWidth = 1 * dpr;
+    ctx.beginPath(); ctx.arc(p[0], p[1], 3.6 * dpr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  }
+}
+const SMOKECOL = { attack: [205, 95, 70], hold: [232, 232, 226], back: [45, 42, 40] };
+function drawSmoke(){
+  for (const sm of smokes){
+    const age = tick - sm.lit; if (age > 700) continue;
+    const p = proj(sm.x, sm.y); if (!p) continue;
+    if (age < 0){ ctx.fillStyle = "rgba(255,170,60," + (0.5 + 0.5 * Math.random()) + ")"; ctx.beginPath(); ctx.arc(p[0], p[1] - 2 * dpr, 3 * dpr, 0, Math.PI * 2); ctx.fill(); continue; }
+    const c = SMOKECOL[sm.kind], fade = age > 500 ? 1 - (age - 500) / 200 : 1, n = Math.min(16, 2 + age / 8);
+    for (let k = 0; k < n; k++){
+      const z = k * 14 + (age % 8) * 1.75, r = (6 + k * 2.2) * dpr * Math.max(0.6, p[2]), drift = Math.sin(k * 0.7 + tick * 0.01) * k * 2.5;
+      ctx.fillStyle = "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," + (0.5 * fade * (1 - k / 18)) + ")";
+      ctx.beginPath(); ctx.arc(p[0] + drift * dpr, p[1] - lift(z, p[2]) - k * 4 * dpr, r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+}
+// 選んだ大隊の中隊(番号つきの丸)。大隊長が離して使っている中隊は金色
+const compMarkPos = c => { const f = cflag[c]; return (cflagDown[c] === 0 && st[f] < DEAD) ? [sx[f], sy[f]] : [cpx[c], cpy[c]]; };
+function compLabel(bt, c){ return String(bt.comps.indexOf(c) + 1); }
+function drawCompMarks(){
+  if (sel == null || sel === "all" || watch) return;
+  const bt = bats[sel]; if (bt.side !== 0) return;
+  ctx.font = "bold " + (10 * dpr) + "px 'Hiragino Sans','Noto Sans JP',sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (const c of bt.comps){
+    if (calive[c] === 0) continue;
+    const w = compMarkPos(c), p = proj(w[0], w[1]); if (!p) continue;
+    const r = 8 * dpr, me = false, X = p[0], Y = p[1] + 12 * dpr;
+    if (cord[c]){ const o = cord[c]; let tx = null, ty = null; if (o.type === "move" || o.type === "back"){ tx = o.x; ty = o.y; } else if (o.bat != null){ tx = bats[o.bat].x; ty = bats[o.bat].y; }
+      const q = tx != null ? proj(tx, ty) : null; if (q){ ctx.strokeStyle = o.type === "attack" ? "rgba(255,140,110,.85)" : "rgba(240,225,180,.85)"; ctx.lineWidth = 1.5 * dpr; ctx.beginPath(); ctx.moveTo(X, Y); ctx.lineTo(q[0], q[1]); ctx.stroke(); } }
+    ctx.fillStyle = me ? "#FFE08A" : cord[c] ? "rgba(217,178,106,.95)" : "rgba(35,70,140,.92)"; ctx.strokeStyle = "#F4ECD8"; ctx.lineWidth = 1.2 * dpr;
+    ctx.beginPath(); ctx.arc(X, Y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = me || cord[c] ? "#1A1812" : "#F4ECD8"; ctx.fillText(compLabel(bt, c), X, Y + 0.5);
+  }
+}
+function drawOrderLine(){
+  if (sel == null || sel === "all") return;
+  const bt = bats[sel], o = bt.order; let tx = null, ty = null;
+  if (o.type === "move" || o.type === "back"){ tx = o.x; ty = o.y; } else if (o.type === "attack" || o.type === "follow"){ tx = bats[o.bat].x; ty = bats[o.bat].y; }
+  const a = proj(bt.x, bt.y), b = tx != null ? proj(tx, ty) : null;
+  if (a && b){ ctx.strokeStyle = o.type === "attack" ? "rgba(255,140,110,.8)" : "rgba(240,225,180,.8)"; ctx.lineWidth = 2 * dpr; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); }
+}
+// 旗:実際に旗持ちの兵が持っている。大隊の旗は名前入り、中隊の旗は近づくと見える
+let flagHit = [];
+function drawFlags(){
+  flagHit = [];
+  ctx.font = (11 * dpr) + "px 'Hiragino Sans','Noto Sans JP',sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const zoomed = cam.s / Math.max(1e-4, baseScale()) > 3.5;
+  for (const bt of bats){
+    if (bt.alive === 0) continue;
+    const side = bt.side, base = side ? [150, 40, 30] : [35, 70, 140];
+    if (zoomed) for (const c of bt.comps){ if (c === bt.flagComp || !flagOK(c)) continue; const f = cflag[c], p = proj(sx[f], sy[f]); if (!p) continue;
+      const L = Math.max(8 * dpr, lift(5, p[2])); ctx.strokeStyle = "rgba(230,220,195,.8)"; ctx.lineWidth = 1 * dpr; ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(p[0], p[1] - L); ctx.stroke();
+      ctx.fillStyle = "rgb(" + base + ")"; ctx.fillRect(p[0], p[1] - L, 7 * dpr, 5 * dpr); }
+    const fc = bt.flagComp, up = flagOK(fc), f = cflag[fc], w0 = up ? [sx[f], sy[f]] : batPos(bt), p = proj(w0[0], w0[1]); if (!p) continue;
+    const isGen = bt.role === "guard", L = Math.max((isGen ? 26 : 18) * dpr, lift(isGen ? 9 : 7, p[2]));
+    const label = bt.name, w = (10 + 11 * label.length) * dpr, h = 15 * dpr, X = p[0], Y = p[1] - L;
+    ctx.strokeStyle = "#E9DEC2"; ctx.lineWidth = 1.5 * dpr; ctx.beginPath(); ctx.moveTo(X, p[1]); ctx.lineTo(X, Y); ctx.stroke();
+    if (isGen){ // 総大将の馬印(金の扇)
+      ctx.fillStyle = "#E3B83F"; ctx.strokeStyle = "#5A4210"; ctx.beginPath(); ctx.moveTo(X, Y + 4 * dpr); ctx.arc(X, Y + 4 * dpr, 11 * dpr, -Math.PI * 0.85, -Math.PI * 0.15); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    const bx = X, by = isGen ? Y + 8 * dpr : Y;
+    ctx.globalAlpha = up ? 1 : 0.55;
+    ctx.fillStyle = bt.broken ? "rgba(90,85,75,.9)" : "rgb(" + base + ")"; ctx.fillRect(bx, by, w, h);
+    const selNow = sel === bt.id || (sel === "all" && side === 0);
+    ctx.strokeStyle = selNow ? "#FFE08A" : "rgba(240,228,200,.7)"; ctx.lineWidth = (selNow ? 2.5 : 1) * dpr; ctx.strokeRect(bx, by, w, h);
+    ctx.fillStyle = "#F4ECD8"; ctx.fillText(label, bx + w / 2, by + h / 2 + 0.5);
+    ctx.globalAlpha = 1;
+    flagHit.push({ id: bt.id, x0: bx - 6 * dpr, y0: by - 6 * dpr, x1: bx + w + 6 * dpr, y1: p[1] + 6 * dpr });
+  }
+}
+function drawScale(){
+  const pxPerM = cam.s / dpr, NICE = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
+  let L = NICE[NICE.length - 1]; for (const n of NICE){ if (n * pxPerM >= 70){ L = n; break; } }
+  const len = L * cam.s, x0 = 12 * dpr, y0 = CH - (document.getElementById("orders").hidden ? 18 : 70) * dpr;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = "rgba(20,18,13,.65)"; ctx.fillRect(x0 - 6 * dpr, y0 - 30 * dpr, len + 74 * dpr, 40 * dpr);
+  ctx.strokeStyle = "#F1E7CF"; ctx.lineWidth = 2 * dpr; ctx.beginPath();
+  ctx.moveTo(x0, y0 - 6 * dpr); ctx.lineTo(x0, y0); ctx.lineTo(x0 + len, y0); ctx.lineTo(x0 + len, y0 - 6 * dpr);
+  ctx.moveTo(x0 + len / 2, y0 - 3 * dpr); ctx.lineTo(x0 + len / 2, y0); ctx.stroke();
+  ctx.fillStyle = "#F1E7CF"; ctx.font = (12 * dpr) + "px 'Hiragino Sans','Noto Sans JP',sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  ctx.fillText(L >= 1000 ? (L / 1000) + " km" : L + " m", x0, y0 - 11 * dpr);
+  if (cam.pitch > 0.02){ ctx.font = (10 * dpr) + "px 'Hiragino Sans','Noto Sans JP',sans-serif"; ctx.fillText("画面の真ん中で", x0 + 44 * dpr, y0 - 11 * dpr); }
+  const cx = x0 + len + 46 * dpr, cy = y0 - 10 * dpr, r = 11 * dpr, nx = Math.sin(-cam.yaw), ny = -Math.cos(-cam.yaw);
+  ctx.save(); ctx.translate(cx, cy);
+  ctx.strokeStyle = "rgba(241,231,207,.5)"; ctx.lineWidth = 1 * dpr; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+  const w3 = 3.2 * dpr, bx = -nx * r * 0.45, by = -ny * r * 0.45;
+  ctx.fillStyle = "#E3654F"; ctx.beginPath(); ctx.moveTo(nx * r * 0.95, ny * r * 0.95); ctx.lineTo(-ny * w3, nx * w3); ctx.lineTo(ny * w3, -nx * w3); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "rgba(241,231,207,.75)"; ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(-ny * w3, nx * w3); ctx.lineTo(ny * w3, -nx * w3); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#F1E7CF"; ctx.font = "bold " + (9 * dpr) + "px 'Hiragino Sans','Noto Sans JP',sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("北", nx * (r - 4.5 * dpr) - ny * 8 * dpr, ny * (r - 4.5 * dpr) + nx * 8 * dpr); ctx.restore();
+}
+
+// ───── 戦場の音:見えているものと近さで鳴らす ─────
+const acc2 = { clash: 0, shout: 0, step: 0, gallop: 0, scream: 0, neigh: 0 };
+let lastVolley = 0, lastFrameT = 0, lastLand = 0;
+const pick = a => a.length ? a[(Math.random() * a.length) | 0] : 0;
+function sound(){
+  if (!running || !SE.on){ SE.ambient(0, 0); lastFrameT = 0; return; }
+  const now = performance.now(), dt = lastFrameT ? Math.min(0.1, (now - lastFrameT) / 1000) : 0; lastFrameT = now;
+  const zf = Math.sqrt(Math.max(1, Math.min(10, cam.s / Math.max(1e-4, baseScale()))));
+  SE.ambient(SND.fight ? Math.min(0.2, Math.sqrt(SND.fight) / 95 * zf) : 0, Math.min(0.12, Math.sqrt(SND.march + SND.run * 2 + SND.gallop * 3) / 160 * zf));
+  const rate = (k, r) => { acc2[k] += dt * r; let n = 0; while (acc2[k] >= 1 && n < 3){ acc2[k]--; n++; } if (acc2[k] > 2) acc2[k] = 0; return n; };
+  // 斬り合い:槍が盾に当たる音が多め、刃の音、打つ音
+  for (let n = rate("clash", Math.min(14, SND.fight * 0.03 * zf)); n > 0; n--){ const r = Math.random(), pan = pick(SND.pans), g = 0.55 + 0.45 * Math.random();
+    SE.play(r < 0.55 ? "spear" : r < 0.8 ? "clang" : "flesh", { pan, g }); }
+  for (let n = rate("shout", Math.min(5, SND.fight * 0.008 * zf + SND.run * 0.002 * zf)); n > 0; n--) SE.play("shout", { pan: pick(SND.pans), g: 0.6 + 0.6 * Math.random() });
+  for (let n = rate("scream", Math.min(3, SND.rout * 0.004 * zf)); n > 0; n--) SE.play("scream", { pan: (Math.random() - 0.5) * 1.4, g: 0.6 });
+  for (let n = rate("step", Math.min(9, (SND.march * 0.004 + SND.run * 0.012) * zf)); n > 0; n--) SE.play("step", { pan: (Math.random() - 0.5) * 1.2, g: 0.5 + 0.5 * Math.random() });
+  for (let n = rate("gallop", Math.min(8, SND.gallop * 0.02 * zf)); n > 0; n--) SE.play("gallop", { pan: pick(SND.gpans), g: 0.6 + 0.5 * Math.random() });
+  for (let n = rate("neigh", Math.min(0.5, SND.gallop * 0.0015 * zf)); n > 0; n--) SE.play("neigh", { pan: pick(SND.gpans) });
+  if (SND.loosed >= 4 && now - lastVolley > 300){ lastVolley = now; SE.play("loose", { pan: SND.lpan / SND.loosed, g: Math.min(1.4, 0.4 + SND.loosed / 20) }); }
+  if (SND.landed > 0 && now - lastLand > 80){ lastLand = now; SE.play("thunk", { pan: (Math.random() - 0.5), g: Math.min(1.2, 0.5 + SND.landed / 8) }); }
+}
+function panOf(x, y){ const p = proj(x, y); return p ? Math.max(-1, Math.min(1, p[0] / CW * 2 - 1)) : 0; }
+function inView(x, y){ const p = proj(x, y); return p && p[0] > -40 && p[0] < CW + 40 && p[1] > -40 && p[1] < CH + 40; }
+let impactT = 0;
+function onEvents(){
+  for (let k = 0; k < events.length; k += 2){
+    const ev = events[k], id = events[k + 1];
+    if (ev === "death" || ev === "hit" || ev === "parry") continue;
+    if (ev === "impact" || ev === "pike"){ if (inView(sx[id], sy[id]) && performance.now() - impactT > 60){ impactT = performance.now(); SE.play("impact", { pan: panOf(sx[id], sy[id]), g: ev === "pike" ? 0.7 : 1 }); } continue; }
+    if (ev === "armybreak"){ toast((id === 0 ? "青" : "赤") + "の軍の気持ちが折れた!総崩れ"); SE.play("horn", { f: 130.8 }); continue; }
+    if (ev === "general"){ toast((id === 0 ? "青" : "赤") + "の総大将が討たれた!"); SE.play("horn", { f: 146.8 }); continue; }
+    if (ev === "succession"){ toast((id === 0 ? "青" : "赤") + "は指揮を引き継いだ"); continue; }
+    if (ev === "umajirushi"){ toast((id === 0 ? "青" : "赤") + "の馬印が倒れた"); continue; }
+    if (ev === "smoke"){ if (id === 1 || watch) toast((id === 0 ? "青" : "赤") + "の本陣に狼煙"); setTimeout(() => SE.play("smoke"), 400); continue; }
+    const bt = bats[id], q = batPos(bt), pan = panOf(q[0], q[1]);
+    if (ev === "arrive" && bt.side === 0 && !watch) SE.play("drum", { pan, g: 0.5 });
+    if (ev === "msglost" && bt.side === 0 && !watch) toast(bt.name + "への伝令が討たれた");
+    if (ev === "flag" && bt.side === 0 && !watch) toast(bt.name + "の旗が倒れた");
+    if (ev === "cavwait" && bt.side === 0 && !watch) toast(bt.name + "の長:森や沼の敵には騎兵で突っ込まず、出てくるのを待つ");
+    if (ev === "uphill" && bt.side === 0 && !watch) toast(bt.name + "の長:坂の上の敵へは攻め上がらず、降りてくるのを待つ");
+    if (ev === "hesitate" && bt.side === 0 && !watch) toast(bt.name + "の長は攻めをためらっている");
+    if (ev === "refuse" && bt.side === 0 && !watch) toast(bt.name + "の長は「敵が強すぎる」と攻めを渋っている");
+    if (ev === "initiative" && bt.side === 0 && !watch) toast(bt.name + "の長が独断で打って出た");
+    if (ev === "selfback" && bt.side === 0 && !watch) toast(bt.name + "の長が退却を決めた(持ちこたえられないと判断)");
+    if (ev === "resume" && bt.side === 0 && !watch) toast(bt.name + "が立て直した" + (bt.bold < 0.4 ? "(その場で待つ)" : "(命令に戻る)"));
+    if (ev === "recovered"){ if (bt.side === 0 && !watch) toast(bt.name + "が崩れから持ち直した"); SE.play("drum", { pan, g: 0.6 }); }
+    if (ev === "broken"){ SE.play("horn", { f: bt.side === 0 ? 174.6 : 261.6, pan }); if (inView(q[0], q[1])) for (let j = 0; j < 3; j++) setTimeout(() => SE.play("scream", { pan, g: 0.8 }), j * 180); }
+    if (ev === "charge" && inView(q[0], q[1])){ SE.play("warcry", { pan, g: 1 }); setTimeout(() => SE.play("neigh", { pan }), 300); }
+  }
+  events.length = 0;
+}
+let toastT = 0;
+function toast(msg){ const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 3200); }
+
+// ───── 操作 ─────
+const $ = id => document.getElementById(id);
+let sel = null, selC = -1, mode = null, running = false, speeds = [1, 2, 4, 8, 16, 32], spd = 1, acc = 0;
+const pts = new Map(); let downAt = null, moved = 0;
+const local = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * dpr, y: (e.clientY - r.top) * dpr }; };
+cv.addEventListener("pointerdown", e => { cv.setPointerCapture && cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, local(e)); if (pts.size === 1){ downAt = local(e); moved = 0; if (editing){ const p = local(e); paintAt(p.x, p.y, null); } } else moved = 99; });
+cv.addEventListener("pointermove", e => {
+  if (!pts.has(e.pointerId)) return;
+  camPrep();
+  const prev = pts.get(e.pointerId), now = local(e);
+  if (pts.size === 1 && editing){ paintAt(now.x, now.y, prev); pts.set(e.pointerId, now); return; }
+  if (pts.size === 1){
+    const a = unproj(prev.x, prev.y), b = unproj(now.x, now.y);
+    if (a && b){ cam.cx += a[0] - b[0]; cam.cy += a[1] - b[1]; clampCam(); }
+    if (downAt) moved = Math.max(moved, Math.hypot(now.x - downAt.x, now.y - downAt.y) / dpr);
+  } else if (pts.size === 2){
+    const o = [...pts.entries()].filter(([id]) => id !== e.pointerId)[0][1];
+    const d0 = Math.hypot(prev.x - o.x, prev.y - o.y), d1 = Math.hypot(now.x - o.x, now.y - o.y);
+    const a0 = Math.atan2(prev.y - o.y, prev.x - o.x), a1 = Math.atan2(now.y - o.y, now.x - o.x);
+    const mx = (now.x + o.x) / 2, my = (now.y + o.y) / 2, dMidY = (now.y - prev.y) / 2;
+    if (d0 > 0) zoomAt(mx, my, d1 / d0);
+    let da = a1 - a0; if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI;
+    if (Math.abs(da) > 0.002) rotateAt(mx, my, -da);   // 指の回りと逆向きに回す
+    if (Math.abs(d1 - d0) < 3 * dpr && Math.abs(da) < 0.02) tiltBy(-dMidY / dpr * 0.006);
+  }
+  pts.set(e.pointerId, now);
+});
+cv.addEventListener("pointerup", e => { const one = pts.size === 1; pts.delete(e.pointerId); if (editing){ if (one) flushPaint(); return; } if (one && moved < 8){ const p = local(e); tap(p.x, p.y); } });
+cv.addEventListener("pointercancel", e => pts.delete(e.pointerId));
+cv.addEventListener("wheel", e => { e.preventDefault(); const p = local(e); camPrep();
+  if (e.shiftKey) rotateAt(p.x, p.y, e.deltaY * 0.002); else if (e.altKey) tiltBy(-e.deltaY * 0.001); else zoomAt(p.x, p.y, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+function keepPoint(X, Y, fn){ camPrep(); const a = unproj(X, Y); fn(); camPrep(); const b = unproj(X, Y); if (a && b){ cam.cx += a[0] - b[0]; cam.cy += a[1] - b[1]; } clampCam(); }
+function zoomAt(X, Y, f){ const base = baseScale(); keepPoint(X, Y, () => { cam.s = Math.max(base * 0.6, Math.min(base * 60, cam.s * f)); }); }
+function rotateAt(X, Y, da){ keepPoint(X, Y, () => { cam.yaw += da; camGoal.yaw = cam.yaw; }); }
+function tiltBy(d){ cam.pitch = Math.max(0, Math.min(1.05, cam.pitch + d)); camGoal.pitch = cam.pitch; }
+function clampCam(){ cam.cx = Math.max(-200, Math.min(W + 200, cam.cx)); cam.cy = Math.max(-200, Math.min(H + 200, cam.cy)); }
+$("camctl").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return; const c = b.dataset.c;
+  if (c === "l") camGoal.yaw -= Math.PI / 12; if (c === "r") camGoal.yaw += Math.PI / 12;
+  if (c === "up") camGoal.pitch = Math.min(1.05, camGoal.pitch + 0.15); if (c === "dn") camGoal.pitch = Math.max(0, camGoal.pitch - 0.15);
+  if (c === "0"){ camGoal.yaw = Math.round(cam.yaw / (2 * Math.PI)) * 2 * Math.PI; camGoal.pitch = 0; }
+  SE.play("tab");
+});
+function easeCam(){
+  const dy = camGoal.yaw - cam.yaw, dp = camGoal.pitch - cam.pitch;
+  if (Math.abs(dy) < 0.001 && Math.abs(dp) < 0.001){ cam.yaw = camGoal.yaw; cam.pitch = camGoal.pitch; return; }
+  keepPoint(CW / 2, CH / 2, () => { cam.yaw += dy * 0.2; cam.pitch += dp * 0.2; });
+}
+function pickBat(X, Y, wx, wy, side){
+  for (let k = flagHit.length - 1; k >= 0; k--){ const f = flagHit[k]; if (bats[f.id].side === side && X >= f.x0 && X <= f.x1 && Y >= f.y0 && Y <= f.y1) return bats[f.id]; }
+  let best = null, bd = 1e9;
+  for (const bt of bats){ if (bt.side !== side || bt.alive === 0) continue; const d = hyp(bt.x - wx, bt.y - wy); if (d < bd){ bd = d; best = bt; } }
+  return bd < 22 * dpr / cam.s + 30 ? best : null;
+}
+const ownBats = () => bats.filter(b => b.side === 0 && !b.broken && b.alive > 0);
+function tap(X, Y){
+  if (!$("plan").hidden || watch) return;
+  camPrep(); const w = unproj(X, Y); if (!w) return; const [wx, wy] = w;
+  if (mode && sel != null){
+    const targets = sel === "all" ? ownBats().filter(b => b.role !== "guard" && b.role !== "horse") : [bats[sel]];
+    let sent = false;
+    if (mode === "move"){ const ac0 = armyCenter(targets); for (const bt of targets){ const off = sel === "all" ? [bt.x - ac0[0], bt.y - ac0[1]] : [0, 0]; sent = cmdOrder(bt, { type: "move", x: Math.round(wx + off[0]), y: Math.round(wy + off[1]) }) || sent; } }
+    if (mode === "attack"){ const e = pickBat(X, Y, wx, wy, 1); if (!e){ SE.play("toggleOff"); return; } for (const bt of targets) sent = cmdOrder(bt, { type: "attack", bat: e.id }) || sent; }
+    if (!sent) toast("総大将がいないので、命令を出せない"); else SE.play("drum", { g: 0.8 });
+    mode = null; renderOrders(); return;
+  }
+  const bt = pickBat(X, Y, wx, wy, 0); sel = bt ? bt.id : null; selC = -1; mode = null; renderOrders();
+  if (bt) SE.play("tab");
+  $("hint").hidden = true;
+}
+function armyCenter(l){ let x = 0, y = 0; for (const b of l){ x += b.x; y += b.y; } return [x / l.length, y / l.length]; }
+const TYPE_NAME = ["歩兵", "弓", "騎兵"];
+const PACE_NAME = bt => bt && bt.type === CAV ? ["並み足", "ふつう", "突撃"] : ["ゆっくり", "ふつう", "急いで"];
+const BOLD = b => b >= 0.7 ? "猛将" : b >= 0.45 ? "堅実" : "慎重";
+// 兵の質:度胸の平均と、何度も崩れて戻らなくなった兵
+function troopTxt(bt){ let s = 0, n = 0, shaken = 0; for (let i = 0; i < M; i++){ if (st[i] >= DEAD || !bt.comps.includes(scomp[i])) continue; s += brave[i]; n++; if (broke[i] >= 2) shaken++; }
+  const a = n ? s / n : 0, q = a >= 0.68 ? "精鋭" : a >= 0.48 ? "並" : "寄せ集め"; return "兵は" + q + (shaken > 20 ? "・何度も崩れた兵" + shaken : ""); }
+const OBEY = o => o >= 0.7 ? "忠実" : o >= 0.4 ? "ふつう" : "独断的";
+const CORD_NAME = { post: "横を守る", flank: "敵の横へ回る", attack: "追い討ち", move: "移動", hold: "構える", back: "下がる" };
+// 大隊長が中隊に何を指図しているか
+function compSummary(bt){
+  const parts = [];
+  for (const c of bt.comps){ const o = cord[c], r = runners.find(r => r.c === c && !r.dead), q = cq.find(q => q.c === c);
+    const n = bt.comps.indexOf(c) + 1;
+    if (r) parts.push(n + ":伝令が向かう"); else if (q) parts.push(n + ":指図中"); else if (o) parts.push(n + ":" + (CORD_NAME[o.type] || o.type)); }
+  return "<small style='color:#BDAE8E;margin-left:6px'>" + (parts.length ? "中隊 " + parts.join("・") : "中隊はすべて隊形のまま") + "</small>";
+}
+function renderOrders(){
+  const el = $("orders");
+  if (watch || sel == null || !$("plan").hidden){ el.hidden = true; return; }
+  el.hidden = false;
+
+  const all = sel === "all", bt = all ? null : bats[sel];
+  const good = all ? 0 : bt.alive - bt.rout, avgMor = all ? 0 : moraleOf(bt);
+  const ordName = o => ({ hold: "止まる", move: "進む", attack: "攻める", back: "下がる", follow: "本陣に付き従う" })[o.type] || "";
+  let msg = "";
+  if (!all){ const m = msgs.find(m => m.bat === bt.id && !m.dead && m.sd === 0);
+    if (m){ const q = batPos(bt), d = hyp(q[0] - m.x, q[1] - m.y); msg = m.wait > 0 ? "・伝令を出す" : m.near ? "" : "・伝令 あと約" + Math.max(1, Math.round(d / 8)) + "秒"; } }
+  const selfTxt = all ? "" : bt.broken ? "・崩れて後ろで立て直し中" : bt.self ? (bt.self.kind === "withdraw" ? "・長の判断で退いている" : "・長の判断で立て直し中")
+    : bt.hes > tick ? "・攻めをためらっている" : bt.refuse ? "・敵が強すぎると攻めを渋っている" : (bt.auto >= 0 && bt.order.type !== "attack" && bt.initT === bt.auto) ? "・独断で打って出た" : "";
+  el.innerHTML = (all ? "<span class='who'>全軍<br><small>本陣は除く</small></span>" : "<span class='who'>" + bt.name + "(" + TYPE_NAME[bt.type] + "・長は" + BOLD(bt.bold) + "・" + OBEY(bt.obey) + ")<br><small>" + good + "人・" + ordName(bt.order) + selfTxt + msg + "<br>" + troopTxt(bt) + "</small></span><span>士気<span class='mor'><i style='width:" + Math.round(avgMor * 100) + "%'></i></span><br>疲れ<span class='mor'><i style='width:" + Math.round(fatigueOf(bt) * 100) + "%;background:#C27A5A'></i></span></span>")
+    + "<span class='sep'></span>"
+    + btn("move", mode === "move" ? "行き先を押す…" : "進む") + btn("attack", mode === "attack" ? "敵の旗を押す…" : "攻める") + btn("hold", "止まる") + btn("back", "下がる")
+    + (all || bt.role === "guard" ? "" : btn("follow", "本陣に付き従う"))
+    + "<span class='sep'></span>" + SP.map((p, k) => "<button type='button' data-sp='" + k + "' class='" + (!all && bt.sp === k ? "on" : "") + "'>" + p.name + "</button>").join("")
+    + "<span class='sep'></span>" + PACE_NAME(all ? null : bt).map((p, k) => "<button type='button' data-pc='" + k + "' class='" + (!all && bt.pace === k ? "on" : "") + "'>" + p + "</button>").join("")
+    + "<span class='sep'></span><button type='button' data-o='all' class='" + (all ? "on" : "") + "'>全軍を選ぶ</button>"
+    + (all ? "" : compSummary(bt));
+  function btn(o, t){ return "<button type='button' data-o='" + o + "' class='" + (mode === o ? "on" : "") + "'>" + t + "</button>"; }
+}
+
+function fatigueOf(bt){ let s = 0, n = 0; for (const c of bt.comps) for (let k = 0; k < mcount[c]; k++){ const i = members[c * SPC + k]; if (st[i] === FORM){ s += fat[i]; n++; } } return n ? s / n : 0; }
+function moraleOf(bt){ let s = 0, n = 0; for (const c of bt.comps) for (let k = 0; k < mcount[c]; k++){ const i = members[c * SPC + k]; if (st[i] < DEAD){ s += mor[i]; n++; } } return n ? s / n : 0; }
+$("orders").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b || b.disabled) return;
+  const targets = sel === "all" ? ownBats().filter(x => x.role !== "guard" && x.role !== "horse") : [bats[sel]];
+  let sent = false;
+  if (b.dataset.sp != null){ for (const bt of targets) sent = cmdOrder(bt, { type: "space", level: +b.dataset.sp }) || sent; SE.play("drum", { g: 0.7 }); renderOrders(); return; }
+  if (b.dataset.pc != null){ for (const bt of targets) sent = cmdOrder(bt, { type: "pace", level: +b.dataset.pc }) || sent; SE.play("drum", { g: 0.7 }); renderOrders(); return; }
+  const o = b.dataset.o;
+  if (o === "all"){ sel = sel === "all" ? null : "all"; selC = -1; mode = null; SE.play("tab"); }
+  else if (o === "move" || o === "attack"){ mode = mode === o ? null : o; SE.play("tap"); }
+  else { for (const bt of targets) sent = cmdOrder(bt, o === "follow" ? { type: "follow", bat: gens[0].guard } : { type: o }) || sent; mode = null;
+    if (!sent) toast("総大将がいないので、命令を出せない"); else SE.play("drum", { g: 0.8 }); }
+  renderOrders();
+});
+$("smoke").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b || b.disabled) return;
+  if (cmdSmoke(0, b.dataset.k)){ toast("狼煙を上げる:" + b.textContent + "(上がるまで約12秒)"); SE.play("tap"); }
+});
+function renderSmoke(){
+  const el = $("smoke"); el.hidden = watch || editing || !$("plan").hidden;
+  if (el.hidden) return;
+  const g = gens[0], wait = Math.max(0, g.smokeCD - tick), can = canCommand(0);
+  el.querySelectorAll("button").forEach(b => b.disabled = wait > 0 || !can);
+  const lit = smokes.filter(s2 => s2.sd === 0 && tick - s2.lit < 0)[0];
+  $("smoke-st").textContent = !can ? "総大将不在" : lit ? "点火中…" : wait > 0 ? "次まで" + Math.ceil(wait / 10) + "秒" : "";
+}
+
+// ───── 戦場をつくる ─────
+let editing = false, tool = 1, brush = 25, mapName = "平原", dirty = null;
+const MAPKEY = "manpei-map";
+function loadMap(){ try { const s = localStorage.getItem(MAPKEY); if (s){ const o = JSON.parse(s); mapFromJSON(o.map); mapName = o.name || "自作"; return; } } catch (e) {} PRESETS.plain.make(); mapName = "平原"; }
+function saveMap(){ try { localStorage.setItem(MAPKEY, JSON.stringify({ name: mapName, map: mapToJSON() })); } catch (e) {} }
+function paintAt(X, Y, prev){
+  camPrep(); const w = unproj(X, Y); if (!w) return;
+  const pw = prev ? unproj(prev.x, prev.y) : null;
+  if (tool === "up" || tool === "down") raise(w[0], w[1], brush, tool === "up" ? 0.9 : -0.9);
+  else if (pw) paintLine(+tool, pw[0], pw[1], w[0], w[1], brush); else paintDisc(+tool, w[0], w[1], brush);
+  mapName = "自作";
+  const r = (tool === "up" || tool === "down" ? brush * 1.7 : brush) + 6, xs = pw ? [pw[0], w[0]] : [w[0]], ys = pw ? [pw[1], w[1]] : [w[1]];
+  paintGround(Math.min(...xs) - r, Math.min(...ys) - r, Math.max(...xs) + r, Math.max(...ys) + r);
+  dirty = true;
+}
+function flushPaint(){ if (dirty){ saveMap(); dirty = null; } }
+function openEditor(){
+  editing = true; running = false; $("plan").hidden = true; $("editor").hidden = false; $("orders").hidden = true; $("smoke").hidden = true; $("hint").hidden = true;
+  cam.yaw = camGoal.yaw = 0; cam.pitch = camGoal.pitch = 0; fit(); renderTools(); SE.play("tab");
+}
+function closeEditor(){
+  editing = false; $("editor").hidden = true; saveMap(); buildNav();
+  setup(watchPick); paintGround(); $("plan").hidden = false; $("map-name").textContent = mapName; SE.play("done");
+}
+function renderTools(){
+  $("editor").querySelectorAll("[data-t]").forEach(b => b.classList.toggle("on", String(tool) === b.dataset.t));
+  $("editor").querySelectorAll("[data-b]").forEach(b => b.classList.toggle("on", String(brush) === b.dataset.b));
+}
+for (const k in PRESETS){ const o = document.createElement("option"); o.value = k; o.textContent = PRESETS[k].name; $("preset").appendChild(o); }
+$("editor").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.t != null){ tool = isNaN(+b.dataset.t) ? b.dataset.t : +b.dataset.t; renderTools(); SE.play("tap"); }
+  if (b.dataset.b != null){ brush = +b.dataset.b; renderTools(); SE.play("tap"); }
+});
+$("preset").addEventListener("change", e => { const k = e.target.value; if (!k) return; PRESETS[k].make(); mapName = PRESETS[k].name; paintGround(); saveMap(); e.target.value = ""; SE.play("done"); });
+$("ed-clear").addEventListener("click", () => { clearMap(); mapName = "平原"; paintGround(); saveMap(); SE.play("toggleOff"); });
+$("ed-done").addEventListener("click", closeEditor);
+$("edit").addEventListener("click", openEditor);
+
+// ───── 画面 ─────
+let watchPick = false;
+$("m-cmd").addEventListener("click", () => { watchPick = false; $("m-cmd").classList.add("on"); $("m-watch").classList.remove("on"); SE.play("tab"); });
+$("m-watch").addEventListener("click", () => { watchPick = true; $("m-watch").classList.add("on"); $("m-cmd").classList.remove("on"); SE.play("tab"); });
+// 時計は戦場の世界の時間(1刻み=世界の0.1秒)。再生の速さを変えても、世界の時間の進み方は変わらない
+const fmtT = t => { const s = t / 10 | 0, h = s / 3600 | 0, m = (s / 60 | 0) % 60; return h + ":" + String(m).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); };
+// 形勢:両軍の強さの差と流れ、軍全体の士気から
+function formTxt(){
+  const g = gens[0], v = g.global * 0.6 + (g.armyMor - gens[1].armyMor) * 0.8 + g.trend;
+  if (gens[0].broken) return "青の総崩れ"; if (gens[1].broken) return "赤の総崩れ";
+  const a = Math.abs(v), who = v > 0 ? "青" : "赤";
+  return a < 0.05 ? "互角" : a < 0.15 ? who + "やや優勢" : a < 0.3 ? who + "優勢" : who + "圧倒";
+}
+let paceHist = [], realRate = 0, rateT = 0, rateTick = 0;
+function casualties(){ return lost[0][0] + lost[0][2] + lost[1][0] + lost[1][2]; }
+function ui(){
+  const good = [0, 1].map(sd => { let a = 0; for (const bt of bats) if (bt.side === sd) a += bt.alive - bt.rout; return a; });
+  $("nb").textContent = good[0]; $("nr").textContent = good[1];
+  $("nb2").textContent = "討" + lost[0][0] + "・傷" + lost[0][2] + "・逃" + lost[0][1]; $("nr2").textContent = "討" + lost[1][0] + "・傷" + lost[1][2] + "・逃" + lost[1][1];
+  $("bar").style.width = (good[0] + good[1] ? good[0] / (good[0] + good[1]) * 100 : 50) + "%";
+  // 世界の1分あたりの死傷(直近1分)
+  if (!paceHist.length || tick - paceHist[paceHist.length - 1][0] >= 50) paceHist.push([tick, casualties()]);
+  while (paceHist.length > 2 && tick - paceHist[0][0] > 600) paceHist.shift();
+  const ph = paceHist[0], pace = ph && tick > ph[0] ? (casualties() - ph[1]) * 600 / (tick - ph[0]) : 0;
+  const now = performance.now(); if (now - rateT > 1000){ realRate = (tick - rateTick) / 10 / ((now - rateT) / 1000); rateT = now; rateTick = tick; }
+  $("clock").textContent = "戦場の時刻 " + fmtT(tick) + "・死傷 " + Math.round(pace) + "人/分・形勢 " + formTxt() + (running && speeds[spd] > 1 && (MPW ? MPW.real : realRate) > 0 && (MPW ? MPW.real : realRate) < speeds[spd] * 0.8 ? "・いまの速さ×" + (MPW ? MPW.real : realRate).toFixed(1) : "") + (MPW ? "・別の流れで計算中" : "");
+  if (over && $("result").hidden){ $("result").hidden = false;
+    const plan = { push: "正面から押す", envelop: "両翼で包む", center: "中央を破る", wait: "待ち受ける" }[gens[1].plan0];
+    const lw = over.loser === 1 ? "赤" : "青";
+    if (!replayLog) lastBattle = { seed: battleSeed, watch, log: orderLog.slice() };
+    $("result").innerHTML = (over.loser === 1 ? "青の勝ち" : "赤の勝ち") + "<small>" + lw + "の軍が" + (over.kind === "army" ? "総崩れになった" : "崩れた") + "(" + fmtT(over.tick) + ")・赤の作戦は「" + plan + "」だった<br>このあと5分ほど、追撃と退却が続きます・合戦の種 " + battleSeed + "</small>"
+      + "<span class='again'><button type='button' data-again='same'>同じ始まりでもう一度</button><button type='button' data-again='replay'>この合戦をもう一度見る</button></span>";
+    SE.play(over.loser === 1 || watch ? "fanfare" : "down"); }
+}
+const showSnd = () => { $("snd").textContent = SE.on ? "音 入" : "音 切"; $("snd").setAttribute("aria-pressed", String(SE.on)); };
+window.__onSE = showSnd;
+$("snd").addEventListener("click", () => { SE.setOn(!SE.on); showSnd(); if (SE.refresh) SE.refresh(); if (SE.on) SE.play("toggleOn"); });
+SE.mount($("se-anchor")); showSnd();
+function begin(watchMode, seedIn, replay){
+  buildNav(); setup(watchMode, seedIn, replay); if (gctx) paintGround();
+  $("plan").hidden = true; $("result").hidden = true; sel = null; selC = -1; mode = null; running = true; $("play").textContent = "止める"; fit(); renderOrders();
+  cam.yaw = camGoal.yaw = 0; cam.pitch = camGoal.pitch = 0;
+  $("hint").hidden = watch && !replay; $("hint").textContent = replay ? "録画を再生しています(命令は出せません)" : "旗を押すと部隊を選べます";
+  if (replay){ $("orders").hidden = true; $("smoke").hidden = true; }
+  SE.play("horn", { f: 220 }); setTimeout(() => SE.play("drum"), 1400); setTimeout(() => SE.play("warcry", { g: 0.8 }), 1900);
+}
+$("go").addEventListener("click", () => begin(watchPick));
+// 同じ始まりでもう一度/この合戦をもう一度見る(録画):種と命令の記録だけで、まったく同じ合戦になる
+let lastBattle = null;
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-again]"); if (!b || !lastBattle) return;
+  if (b.dataset.again === "same") begin(lastBattle.watch, lastBattle.seed);
+  else begin(lastBattle.watch, lastBattle.seed, lastBattle.log);
+});
+$("again").addEventListener("click", () => { running = false; $("play").textContent = "動かす"; $("plan").hidden = false; renderOrders(); SE.ambient(0, 0); SE.play("tap"); });
+$("play").addEventListener("click", () => { if (!$("plan").hidden) return; running = !running; $("play").textContent = running ? "止める" : "動かす"; SE.play(running ? "toggleOn" : "toggleOff"); });
+$("speed").addEventListener("click", () => { spd = (spd + 1) % speeds.length; $("speed").textContent = "×" + speeds[spd]; SE.play("tap"); });
+document.addEventListener("visibilitychange", () => { if (document.hidden && running){ running = false; $("play").textContent = "動かす"; SE.ambient(0, 0); } });
+window.addEventListener("resize", () => fit(true));
+
+loadMap(); $("map-name").textContent = mapName; setup(false); if (gctx) paintGround();
+let lastT = 0, lastUI = 0;
+function frame(t){
+  if (!fitted) fit();
+  if (MPW){ const v = running && !editing ? speeds[spd] : 0; if (v !== MPW.speed){ MPW.w.postMessage({ t: "speed", v }); MPW.speed = v; } }   // 計算は別の流れ。ここは速さを伝えるだけ
+  else if (running && lastT){ acc += (t - lastT) / 100 * speeds[spd]; const t0 = performance.now(); while (acc >= 1){ step(); acc--; if (performance.now() - t0 > 11){ acc = 0; break; } } }
+  lastT = t; easeCam(); draw(); sound(); onEvents(); ui();
+  if (t - lastUI > 400){ lastUI = t; if (sel != null && sel !== "all" && !mode) renderOrders(); renderSmoke(); }
+  requestAnimationFrame(frame);
+}
+window.SIM = { setup, step, get tick(){ return tick; }, get bats(){ return bats; }, get over(){ return over; }, get lost(){ return lost; }, get gens(){ return gens; }, get msgs(){ return msgs; }, get arrows(){ return arrows; }, get smokes(){ return smokes; },
+  sendOrder, lightSmoke, cord, cpx, cpy, ter, hgt, PRESETS, terAt, hAt, get editing(){ return editing; }, get mapName(){ return mapName; }, get runners(){ return runners; }, get cq(){ return cq; }, st, sx, sy, mor, hp, role, cflag, ctype, scomp, SP, cam, proj, unproj, camPrep, fit, get flagHit(){ return flagHit; }, drawFlagsForTest: () => { camPrep(); flagHit = []; } };
+if (!window.__test) requestAnimationFrame(frame);
+</script>
+</body></html>
