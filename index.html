@@ -1391,10 +1391,14 @@ const MANPEI = {
 // ───── 別の流れ(Worker)で動かすとき ─────
 // 画面から「準備」「速さ」「命令」を受け取り、計算を進め、画面が使う様子を送り返す。兵の入れ物は画面と分け合っているので送らない
 if (typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope){
-  let wSpeed = 0, wAcc = 0, wLast = performance.now(), wReal = 0, wTicks = 0, wT0 = performance.now(), wSet = false;   // wSet:画面から準備を受け取ったか
+  let wSpeed = 0, wAcc = 0, wLast = performance.now(), wReal = 0, wTicks = 0, wT0 = performance.now(), wSet = false, wBusy = 0, wMs = 0, wSnapMs = 0, wSnapT = 0;   // wSet:画面から準備を受け取ったか
   const snap = () => {
     const ev = events.splice(0), de = deaths.splice(0);
-    postMessage({ t: "snap", tick, over, watch, battleSeed, seed, orderLog, replayLog, lost, arrowKills, rallied, bats, gens, msgs, runners, smokes, cq, arrows, cord, events: ev, deaths: de, real: wReal });
+    // 部隊は、画面が使う項目だけを送る(足どりの記録や道筋は送らない)
+    const bv = bats.map(b => ({ id: b.id, side: b.side, name: b.name, type: b.type, role: b.role, x: b.x, y: b.y, a: b.a, sp: b.sp, pace: b.pace, alive: b.alive, rout: b.rout, broken: b.broken,
+      order: b.order, self: b.self, auto: b.auto, hes: b.hes, refuse: b.refuse, initT: b.initT, bold: b.bold, obey: b.obey, flagComp: b.flagComp, comps: b.comps, leader: b.leader, contact: b.contact, run: b.run }));
+    const gv = gens.map(g => ({ side: g.side, dead: g.dead, gi: g.gi, guard: g.guard, horse: g.horse, x: g.x, y: g.y, smokeCD: g.smokeCD, plan: g.plan, plan0: g.plan0, armyMor: g.armyMor, broken: g.broken, global: g.global, trend: g.trend, succ: g.succ }));
+    postMessage({ t: "snap", tick, over, watch, battleSeed, seed, orderLog, replayLog, lost, arrowKills, rallied, bats: bv, gens: gv, msgs, runners, smokes, cq, arrows, cord, events: ev, deaths: de, real: wReal, ms: wMs, snapMs: wSnapMs });
   };
   // 休まず計算し、画面へは約30分の1秒ごとに様子を送る(次の計算はすぐに始める)
   let wLastSnap = 0; const ch = new MessageChannel(); ch.port1.onmessage = () => loop();
@@ -1404,10 +1408,11 @@ if (typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScop
       wAcc += (now - wLast) / 100 * wSpeed; if (wAcc > 60) wAcc = 60;
       const t0 = performance.now();
       while (wAcc >= 1 && performance.now() - t0 < 25){ step(); wAcc--; wTicks++; }
+      wBusy += performance.now() - t0;
     } else wAcc = 0;
     wLast = now;
-    if (now - wT0 > 1000){ wReal = wTicks / ((now - wT0) / 100); wTicks = 0; wT0 = now; }   // 実際に出ている速さ(×何倍)
-    if (wSet && now - wLastSnap > 30){ snap(); wLastSnap = now; }
+    if (now - wT0 > 1000){ wReal = wTicks / ((now - wT0) / 100); wMs = wTicks ? wBusy / wTicks : 0; wSnapMs = wSnapT; wTicks = 0; wBusy = 0; wSnapT = 0; wT0 = now; }   // 実際に出ている速さ(×何倍)・1刻みの重さ
+    if (wSet && now - wLastSnap > 45){ const q0 = performance.now(); snap(); wSnapT += performance.now() - q0; wLastSnap = now; }
     if (wSpeed > 0 && wAcc >= 1) ch.port2.postMessage(0); else setTimeout(loop, 8);
   };
   self.onmessage = e => {
@@ -1718,7 +1723,7 @@ const MPW = (() => {
       if (d.t === "hash"){ api.lastHash = [d.tick, d.h]; return; }
       if (d.t !== "snap") return;
       tick = d.tick; over = d.over; watch = d.watch; battleSeed = d.battleSeed; seed = d.seed; orderLog = d.orderLog; replayLog = d.replayLog;
-      lost = d.lost; arrowKills = d.arrowKills; rallied = d.rallied; api.real = d.real;
+      lost = d.lost; arrowKills = d.arrowKills; rallied = d.rallied; api.real = d.real; api.ms = d.ms; api.snapMs = d.snapMs;
       const selId = sel && typeof sel === "object" ? sel.id : null;
       bats.length = 0; for (const b of d.bats) bats.push(b);
       gens.length = 0; for (const g of d.gens) gens.push(g);
@@ -2242,7 +2247,7 @@ function ui(){
   while (paceHist.length > 2 && tick - paceHist[0][0] > 600) paceHist.shift();
   const ph = paceHist[0], pace = ph && tick > ph[0] ? (casualties() - ph[1]) * 600 / (tick - ph[0]) : 0;
   const now = performance.now(); if (now - rateT > 1000){ realRate = (tick - rateTick) / 10 / ((now - rateT) / 1000); rateT = now; rateTick = tick; }
-  $("clock").textContent = "戦場の時刻 " + fmtT(tick) + "・死傷 " + Math.round(pace) + "人/分・形勢 " + formTxt() + (running && speeds[spd] > 1 && (MPW ? MPW.real : realRate) > 0 && (MPW ? MPW.real : realRate) < speeds[spd] * 0.8 ? "・いまの速さ×" + (MPW ? MPW.real : realRate).toFixed(1) : "") + (MPW ? "・別の流れで計算中" : "");
+  $("clock").textContent = "戦場の時刻 " + fmtT(tick) + "・死傷 " + Math.round(pace) + "人/分・形勢 " + formTxt() + (running && (MPW ? MPW.real : realRate) > 0 ? "・実際の速さ×" + (MPW ? MPW.real : realRate).toFixed(1) : "") + (MPW ? "・別の流れで計算中(1刻み" + (MPW.ms || 0).toFixed(1) + "ms・受け渡し" + (MPW.snapMs || 0).toFixed(0) + "ms/秒・" : "・(") + "描く" + drawMs.toFixed(0) + "ms・コア" + (navigator.hardwareConcurrency || "?") + ")";
   if (over && $("result").hidden){ $("result").hidden = false;
     const plan = { push: "正面から押す", envelop: "両翼で包む", center: "中央を破る", wait: "待ち受ける" }[gens[1].plan0];
     const lw = over.loser === 1 ? "赤" : "青";
@@ -2279,11 +2284,14 @@ window.addEventListener("resize", () => fit(true));
 
 loadMap(); $("map-name").textContent = mapName; setup(false); if (gctx) paintGround();
 let lastT = 0, lastUI = 0;
+let drawSkip = 0, drawMs = 0;
 function frame(t){
   if (!fitted) fit();
   if (MPW){ const v = running && !editing ? speeds[spd] : 0; if (v !== MPW.speed){ MPW.w.postMessage({ t: "speed", v }); MPW.speed = v; } }   // 計算は別の流れ。ここは速さを伝えるだけ
   else if (running && lastT){ acc += (t - lastT) / 100 * speeds[spd]; const t0 = performance.now(); while (acc >= 1){ step(); acc--; if (performance.now() - t0 > 11){ acc = 0; break; } } }
-  lastT = t; easeCam(); draw(); sound(); onEvents(); ui();
+  // 速く再生しているときは、描くのを1コマおきにして、計算に時間を回す(描くのが重いため)
+  drawSkip = (drawSkip + 1) % (running && speeds[spd] >= 8 ? 2 : 1);
+  lastT = t; easeCam(); if (drawSkip === 0){ const d0 = performance.now(); draw(); drawMs = drawMs * 0.9 + (performance.now() - d0) * 0.1; } sound(); onEvents(); ui();
   if (t - lastUI > 400){ lastUI = t; if (sel != null && sel !== "all" && !mode) renderOrders(); renderSmoke(); }
   requestAnimationFrame(frame);
 }
